@@ -2,6 +2,7 @@
 # TODO: Implement settings management with Pydantic
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
@@ -13,6 +14,12 @@ class Settings(BaseSettings):
     default_llm_model: str = "llama2"
     openai_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
+    
+    # LangSmith Configuration
+    langsmith_tracing: bool = False
+    langchain_endpoint: Optional[str] = None
+    langchain_api_key: Optional[str] = None
+    langchain_project: Optional[str] = None
     
     # SSLCommerz Configuration
     sslcommerz_store_id: str = ""
@@ -30,7 +37,9 @@ class Settings(BaseSettings):
     max_word_count: int = 400
     min_word_count: int = 150
     
-    class Config:
-        env_file = ".env"
+    model_config = ConfigDict(
+        env_file=".env",
+        extra="ignore"  # Ignore extra environment variables like LangChain settings
+    )
 
 settings = Settings()

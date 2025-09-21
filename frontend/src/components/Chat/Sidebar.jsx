@@ -72,13 +72,12 @@ export default function Sidebar({ items = [], collapsed = false, onToggle }) {
       {/* Header */}
       <div className='flex items-center justify-between px-4 py-4'>
         <div className='flex items-center gap-2 text-white font-semibold text-lg'>
-          <Square className='h-5 w-5' />
-          T3.chat
-        </div>
-        <div className='flex items-center gap-2'>
-          <button onClick={onToggle} className='p-1 hover:bg-gray-700 rounded'>
+        <button onClick={onToggle} className='p-1 hover:bg-gray-700 rounded'>
             <Menu className='h-4 w-4 text-gray-400' />
           </button>
+          IELTS-AI
+        </div>
+        <div className='flex items-center gap-2'>
           <button className='p-1 hover:bg-gray-700 rounded'>
             <Settings className='h-4 w-4 text-gray-400' />
           </button>

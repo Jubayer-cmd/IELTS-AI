@@ -3,6 +3,16 @@
 
 import axios from 'axios'
 
+// Simple user ID generation for memory persistence
+const getUserId = () => {
+  let userId = localStorage.getItem('ielts_user_id')
+  if (!userId) {
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    localStorage.setItem('ielts_user_id', userId)
+  }
+  return userId
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const apiClient = axios.create({
@@ -27,23 +37,11 @@ export const authAPI = {
   },
 }
 
-export const evaluationAPI = {
-  generateQuestion: (taskType) => {
-    // TODO: Implement question generation API call
-  },
-  evaluateEssay: (essayData) => {
-    // TODO: Implement essay evaluation API call
-  },
-  getEvaluations: () => {
-    // TODO: Implement get evaluations API call
-  },
-  getEvaluationDetails: (id) => {
-    // TODO: Implement get evaluation details API call
-  },
-}
+// Note: Evaluation functionality has been moved to chatAPI
+// All IELTS evaluations and question generation are now handled through the chat interface
 
 export const chatAPI = {
-  sendMessage: async (message, sessionId = null, onMessage = null) => {
+  sendMessage: async (message, imageData = null, conversationState = 'greeting', onMessage = null) => {
     try {
       const url = `${API_BASE_URL}/chat/message`
       const response = await fetch(url, {
@@ -53,6 +51,9 @@ export const chatAPI = {
         },
         body: JSON.stringify({
           message: message,
+          image_data: imageData,
+          conversation_state: conversationState,
+          user_id: getUserId(),
         }),
       })
       
@@ -62,10 +63,21 @@ export const chatAPI = {
 
       const data = await response.json()
       
-      // Simulate the old streaming format for compatibility
-      if (onMessage) {
-        onMessage({ type: 'message', content: data.message })
+      // Return the full response with all new fields
+      const result = {
+        message: data.message,
+        shouldDeductCredit: data.should_deduct_credit,
+        conversationState: data.conversation_state,
+        userIntent: data.user_intent,
+        evaluationData: data.evaluation_data,
       }
+      
+      // Also call onMessage callback for compatibility
+      if (onMessage) {
+        onMessage({ type: 'message', content: data.message, data: result })
+      }
+      
+      return result
       
     } catch (error) {
       throw error
@@ -75,54 +87,16 @@ export const chatAPI = {
   generateQuestion: async (taskType = 'Task 2', onMessage = null) => {
     try {
       const message = `Generate an IELTS Writing ${taskType} question for me to practice.`
-      
-      const response = await fetch(`${API_BASE_URL}/chat/message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate question')
-      }
-
-      const data = await response.json()
-      
-      // Simulate the old streaming format for compatibility
-      if (onMessage) {
-        onMessage({ type: 'message', content: data.message })
-      }
-      
+      return await chatAPI.sendMessage(message, null, 'waiting_for_preference', onMessage)
     } catch (error) {
       throw error
     }
   },
 
-  evaluateEssay: async (essayText, taskType = 'Task 2', onMessage = null) => {
+  evaluateEssay: async (essayText, taskType = 'Task 2', imageData = null, onMessage = null) => {
     try {
       const message = `Please evaluate this IELTS Writing ${taskType} essay and provide detailed feedback:\n\n${essayText}`
-      
-      const response = await fetch(`${API_BASE_URL}/chat/message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to evaluate essay')
-      }
-
-      const data = await response.json()
-      
-      // Simulate the old streaming format for compatibility
-      if (onMessage) {
-        onMessage({ type: 'message', content: data.message })
-      }
-      
+      return await chatAPI.sendMessage(message, imageData, 'waiting_for_essay', onMessage)
     } catch (error) {
       throw error
     }

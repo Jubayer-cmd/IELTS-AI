@@ -8,7 +8,7 @@ import { chatAPI } from '@/services/api'
 
 export default function ChatWindow() {
   const [messages, setMessages] = useState([])
-  const [sessionId, setSessionId] = useState(null)
+  const [conversationState, setConversationState] = useState('greeting')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
@@ -55,27 +55,26 @@ export default function ChatWindow() {
     addMessage('ai', '')
 
     try {
-      await chatAPI.sendMessage(message, sessionId, (data) => {
-        if (data.type === 'message' && data.content) {
-          // Replace the empty AI message with the full response
-          setMessages(prev => {
-            const updated = [...prev]
-            if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-              updated[updated.length - 1].content = data.content
+      const response = await chatAPI.sendMessage(message, null, conversationState)
+
+      // Handle the full response
+      if (response) {
+        // Update conversation state
+        setConversationState(response.conversationState)
+        
+        // Update the AI message with the response
+        setMessages(prev => {
+          const updated = [...prev]
+          if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
+            updated[updated.length - 1].content = response.message
+            // Add evaluation data if present
+            if (response.evaluationData) {
+              updated[updated.length - 1].evaluationData = response.evaluationData
             }
-            return updated
-          })
-        } else if (data.type === 'error') {
-          setMessages(prev => {
-            const updated = [...prev]
-            if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-              updated[updated.length - 1].content = `Error: ${data.content}`
-              updated[updated.length - 1].type = 'error'
-            }
-            return updated
-          })
-        }
-      })
+          }
+          return updated
+        })
+      }
     } catch (error) {
       setMessages(prev => {
         const updated = [...prev]
@@ -88,7 +87,7 @@ export default function ChatWindow() {
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, isLoading, addMessage, updateLastMessage])
+  }, [conversationState, isLoading, addMessage])
 
   const handleGenerateQuestion = useCallback(async (taskType = 'Task 2') => {
     if (isLoading) return
@@ -102,27 +101,22 @@ export default function ChatWindow() {
     addMessage('ai', '')
 
     try {
-      await chatAPI.generateQuestion(taskType, (data) => {
-        if (data.type === 'message' && data.content) {
-          // Replace the empty AI message with the full response
-          setMessages(prev => {
-            const updated = [...prev]
-            if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-              updated[updated.length - 1].content = data.content
-            }
-            return updated
-          })
-        } else if (data.type === 'error') {
-          setMessages(prev => {
-            const updated = [...prev]
-            if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-              updated[updated.length - 1].content = `Error: ${data.content}`
-              updated[updated.length - 1].type = 'error'
-            }
-            return updated
-          })
-        }
-      })
+      const response = await chatAPI.generateQuestion(taskType)
+
+      // Handle the full response
+      if (response) {
+        // Update conversation state
+        setConversationState(response.conversationState)
+        
+        // Update the AI message with the response
+        setMessages(prev => {
+          const updated = [...prev]
+          if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
+            updated[updated.length - 1].content = response.message
+          }
+          return updated
+        })
+      }
     } catch (error) {
       setMessages(prev => {
         const updated = [...prev]
@@ -135,7 +129,7 @@ export default function ChatWindow() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, addMessage, updateLastMessage])
+  }, [isLoading, addMessage])
 
   return (
     <div className='h-screen flex flex-col bg-transparent'>

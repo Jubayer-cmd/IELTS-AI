@@ -2,9 +2,12 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Import routers
-from api import auth, evaluation, payment, admin, chat
+from api import auth, payment, admin, chat
 
 app = FastAPI(title="IELTS Writing Feedback AI", version="1.0.0")
 
@@ -19,7 +22,6 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router)
-app.include_router(evaluation.router)
 app.include_router(payment.router)
 app.include_router(admin.router)
 app.include_router(chat.router)
