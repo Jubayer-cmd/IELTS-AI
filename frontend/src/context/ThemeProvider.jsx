@@ -19,6 +19,8 @@ export default function ThemeProvider({ children }) {
       setPrimary(saved)
       applyThemeClass(saved)
     } else {
+      // Make sure violet is applied as default
+      setPrimary('violet')
       applyThemeClass('violet')
     }
   }, [])

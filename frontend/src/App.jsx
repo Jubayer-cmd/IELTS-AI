@@ -32,7 +32,7 @@ function Shell() {
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated) {
   return (
-    <div className="h-screen w-screen bg-[#1a1a1a] dark overflow-hidden flex">
+    <div className="h-screen w-screen bg-background dark overflow-hidden flex">
       <CollapsibleSidebar />
       <main className="flex-1 h-full flex flex-col">
         <HomePage />
@@ -42,7 +42,7 @@ function Shell() {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#1a1a1a] dark overflow-hidden flex">
+    <div className="h-screen w-screen bg-background dark overflow-hidden flex">
       <CollapsibleSidebar />
       <main className="flex-1 h-full flex flex-col">
         <Routes>
@@ -56,7 +56,7 @@ function Shell() {
 function CollapsibleSidebar() {
   const [collapsed, setCollapsed] = useState(false)
   return (
-    <div className={`${collapsed ? 'w-16' : 'w-64'} h-full transition-all duration-300 border-r border-gray-700`}>
+    <div className={`${collapsed ? 'w-16' : 'w-64'} h-full transition-all duration-300 border-r border-border`}>
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
     </div>
   )

@@ -2,6 +2,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/context/ThemeProvider'
 
+const THEME_COLORS = {
+  violet: 'hsl(262 83% 58%)',
+  indigo: 'hsl(231 69% 58%)',
+  emerald: 'hsl(152 76% 36%)',
+  rose: 'hsl(346 77% 49%)',
+  amber: 'hsl(38 92% 50%)'
+}
+
 export default function SettingsDialog({ children }) {
   const { primary, setPrimary, options } = useTheme()
   return (
@@ -16,12 +24,15 @@ export default function SettingsDialog({ children }) {
             <button
               key={opt}
               onClick={() => setPrimary(opt)}
-              className={`aspect-square rounded-md border flex items-center justify-center ${
+              className={`aspect-square rounded-md border border-border bg-card hover:bg-accent flex items-center justify-center transition-colors ${
                 primary === opt ? 'ring-2 ring-primary' : ''
-              } theme-${opt}`}
+              }`}
               title={opt}
             >
-              <span className='h-6 w-6 rounded-full' style={{ backgroundColor: 'hsl(var(--primary))' }} />
+              <span
+                className='h-6 w-6 rounded-full'
+                style={{ backgroundColor: THEME_COLORS[opt] }}
+              />
             </button>
           ))}
         </div>
