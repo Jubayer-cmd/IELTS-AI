@@ -1,13 +1,23 @@
 import ChatWindow from '@/components/Chat/ChatWindow'
 import FloatingControls from '@/components/Common/FloatingControls'
+import MobileHeader from '@/components/Common/MobileHeader'
 
-export default function HomePage() {
+export default function HomePage({ onMenuClick }) {
   return (
     <div className='h-full bg-background flex flex-col'>
-        <div className='h-full'>
-          <ChatWindow />
+      {/* Mobile Header - only show on mobile */}
+      {onMenuClick && (
+        <div className='md:hidden'>
+          <MobileHeader onMenuClick={onMenuClick} />
         </div>
-        <FloatingControls />
+      )}
+
+      <div className='flex-1 flex flex-col overflow-hidden'>
+        <ChatWindow />
+      </div>
+
+      {/* Floating controls - responsive positioning */}
+      <FloatingControls />
     </div>
   )
 }

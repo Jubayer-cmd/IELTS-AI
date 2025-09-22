@@ -43,34 +43,34 @@ export default function ChatInput({ onSend, disabled = false }) {
   }, [message])
 
   return (
-    <div className='px-6 pt-6 bg-background'>
+    <div className='px-4 md:px-6 pt-4 md:pt-6 bg-background'>
       <div className='max-w-4xl mx-auto'>
         <div className='relative bg-card border border-border rounded-t-xl overflow-hidden shadow-2xl'>
           {/* Textarea */}
-          <div className='p-4'>
+          <div className='p-3 md:p-4'>
             <textarea
               ref={textareaRef}
               value={message}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
               placeholder='Type your message here...'
-              className='w-full bg-transparent text-foreground placeholder-muted-foreground resize-none border-none outline-none text-base min-h-[24px] max-h-[200px]'
+              className='w-full bg-transparent text-foreground placeholder-muted-foreground resize-none border-none outline-none text-sm md:text-base min-h-[24px] max-h-[200px]'
               rows={2}
               disabled={disabled}
             />
           </div>
-          
+
           {/* Bottom Controls */}
-          <div className='flex items-center justify-between px-4 pb-3'>
-            <div className='flex items-center gap-3'>
-              <button className='p-2 hover:bg-accent rounded-lg transition-colors'>
+          <div className='flex items-center justify-between px-3 md:px-4 pb-3'>
+            <div className='flex items-center gap-2 md:gap-3'>
+              <button className='p-2 hover:bg-accent rounded-lg transition-colors md:block hidden'>
                 <Paperclip className='h-4 w-4 text-muted-foreground' />
               </button>
             </div>
             <Button
               onClick={handleSubmit}
               disabled={!message.trim() || disabled}
-              className='h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-0 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed'
+              className='h-9 w-9 md:h-8 md:w-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-0 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed'
             >
               {disabled ? (
                 <div className='h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin' />

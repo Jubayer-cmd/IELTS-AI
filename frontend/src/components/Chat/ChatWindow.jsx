@@ -132,18 +132,18 @@ export default function ChatWindow() {
   }, [isLoading, addMessage])
 
   return (
-    <div className='h-screen flex flex-col bg-transparent'>
+    <div className='h-full flex flex-col bg-transparent'>
       {/* Header with Task Buttons - only show if we have messages */}
       {messages.length > 0 && (
-        <div className='p-4 border-b border-gray-700 flex justify-between items-center bg-[#1a1a1a] flex-shrink-0'>
-          <h2 className='font-semibold text-white'>IELTS Writing Assistant</h2>
-          <div className='flex gap-2'>
+        <div className='p-3 md:p-4 border-b border-border flex flex-col md:flex-row gap-3 md:gap-0 md:justify-between items-start md:items-center bg-card flex-shrink-0'>
+          <h2 className='font-semibold text-foreground text-base md:text-lg'>IELTS Writing Assistant</h2>
+          <div className='flex gap-2 w-full md:w-auto'>
             <Button
               variant='outline'
               size='sm'
               onClick={() => handleGenerateQuestion('Task 1')}
               disabled={isLoading}
-              className='border-gray-600 text-gray-300 hover:bg-gray-700'
+              className='flex-1 md:flex-initial text-xs md:text-sm'
             >
               Task 1 Question
             </Button>
@@ -152,20 +152,20 @@ export default function ChatWindow() {
               size='sm'
               onClick={() => handleGenerateQuestion('Task 2')}
               disabled={isLoading}
-              className='border-gray-600 text-gray-300 hover:bg-gray-700'
+              className='flex-1 md:flex-initial text-xs md:text-sm'
             >
               Task 2 Question
             </Button>
           </div>
         </div>
       )}
-      
+
       {/* Messages Area - scrollable */}
       <div className='flex-1 overflow-y-auto'>
         <MessageList messages={messages} isLoading={isLoading} />
         <div ref={messagesEndRef} />
       </div>
-      
+
       {/* Input Area - fixed at bottom */}
       <div className='flex-shrink-0'>
         <ChatInput onSend={handleSendMessage} disabled={isLoading} />

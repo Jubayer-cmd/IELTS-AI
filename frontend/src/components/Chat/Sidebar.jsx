@@ -3,7 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Pin, Search, Plus, ChevronDown, Square, Settings, Sun, Menu } from 'lucide-react'
+import { Pin, Search, Plus, ChevronDown, Square, Settings, Sun, Menu, MessageSquarePlus } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export default function Sidebar({ items = [], collapsed = false, onToggle }) {
@@ -90,7 +90,7 @@ export default function Sidebar({ items = [], collapsed = false, onToggle }) {
       {/* New Chat Button */}
       <div className='px-3 mb-4'>
         <Button className='w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-lg font-medium flex items-center justify-center gap-2'>
-          <Plus className='h-4 w-4' />
+          <MessageSquarePlus className='h-4 w-4' />
           New Chat
         </Button>
       </div>
