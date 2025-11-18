@@ -6,7 +6,7 @@ import MessageList from '@/components/Chat/MessageList'
 import ChatInput from '@/components/Chat/ChatInput'
 import { chatAPI } from '@/services/api'
 
-export default function ChatWindow() {
+export default function ChatWindow({ currentThreadId }) {
   const [messages, setMessages] = useState([])
   const [conversationState, setConversationState] = useState('greeting')
   const [isLoading, setIsLoading] = useState(false)
@@ -20,6 +20,37 @@ export default function ChatWindow() {
     scrollToBottom()
   }, [messages])
 
+  // Load messages when thread changes
+  useEffect(() => {
+    if (currentThreadId) {
+      loadThreadMessages(currentThreadId)
+    } else {
+      setMessages([])
+      setIsLoading(false)
+    }
+  }, [currentThreadId])
+
+  const loadThreadMessages = async (threadId) => {
+    try {
+      setIsLoading(true)
+      const threadMessages = await chatAPI.getThreadMessages(threadId)
+
+      // Convert backend messages to frontend format
+      const formattedMessages = threadMessages.map(msg => ({
+        id: msg.id,
+        role: msg.role === 'user' ? 'user' : 'ai',
+        content: msg.content,
+        type: 'message',
+        timestamp: new Date(msg.created_at)
+      }))
+
+      setMessages(formattedMessages)
+    } catch (error) {
+      console.error('Failed to load thread messages:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const addMessage = useCallback((role, content, type = 'message') => {
     setMessages(prev => [...prev, {
@@ -42,26 +73,31 @@ export default function ChatWindow() {
   }, [])
 
   const handleSendMessage = useCallback(async (message) => {
-    if (!message.trim() || isLoading) {
+    if (!message.trim() || isLoading || !currentThreadId) {
       return
     }
 
     setIsLoading(true)
-    
+
     // Add user message
     addMessage('user', message)
-    
+
     // Add placeholder AI message
     addMessage('ai', '')
 
     try {
-      const response = await chatAPI.sendMessage(message, null, conversationState)
+      const response = await chatAPI.sendMessageToThread(
+        currentThreadId,
+        message,
+        null,
+        conversationState
+      )
 
       // Handle the full response
       if (response) {
         // Update conversation state
         setConversationState(response.conversationState)
-        
+
         // Update the AI message with the response
         setMessages(prev => {
           const updated = [...prev]
@@ -87,27 +123,34 @@ export default function ChatWindow() {
     } finally {
       setIsLoading(false)
     }
-  }, [conversationState, isLoading, addMessage])
+  }, [currentThreadId, conversationState, isLoading, addMessage])
 
   const handleGenerateQuestion = useCallback(async (taskType = 'Task 2') => {
-    if (isLoading) return
+    if (isLoading || !currentThreadId) return
 
     setIsLoading(true)
-    
+
+    const questionMessage = `Generate an IELTS Writing ${taskType} question for me to practice.`
+
     // Add user request
     addMessage('user', `Generate a ${taskType} question`)
-    
+
     // Add placeholder AI message
     addMessage('ai', '')
 
     try {
-      const response = await chatAPI.generateQuestion(taskType)
+      const response = await chatAPI.sendMessageToThread(
+        currentThreadId,
+        questionMessage,
+        null,
+        'waiting_for_preference'
+      )
 
       // Handle the full response
       if (response) {
         // Update conversation state
         setConversationState(response.conversationState)
-        
+
         // Update the AI message with the response
         setMessages(prev => {
           const updated = [...prev]
@@ -129,36 +172,15 @@ export default function ChatWindow() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, addMessage])
+  }, [currentThreadId, isLoading, addMessage])
 
   return (
     <div className='h-full flex flex-col bg-transparent'>
-      {/* Header with Task Buttons - only show if we have messages */}
-      {messages.length > 0 && (
-        <div className='p-3 md:p-4 border-b border-border flex flex-col md:flex-row gap-3 md:gap-0 md:justify-between items-start md:items-center bg-card flex-shrink-0'>
-          <h2 className='font-semibold text-foreground text-base md:text-lg'>IELTS Writing Assistant</h2>
-          <div className='flex gap-2 w-full md:w-auto'>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => handleGenerateQuestion('Task 1')}
-              disabled={isLoading}
-              className='flex-1 md:flex-initial text-xs md:text-sm'
-            >
-              Task 1 Question
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => handleGenerateQuestion('Task 2')}
-              disabled={isLoading}
-              className='flex-1 md:flex-initial text-xs md:text-sm'
-            >
-              Task 2 Question
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Header */}
+      <div className='p-3 md:p-4 border-b border-border bg-card flex-shrink-0'>
+        <h2 className='font-semibold text-foreground text-base md:text-lg'>IELTS Writing Assistant</h2>
+      </div>
+
 
       {/* Messages Area - scrollable */}
       <div className='flex-1 overflow-y-auto'>
@@ -168,10 +190,8 @@ export default function ChatWindow() {
 
       {/* Input Area - fixed at bottom */}
       <div className='flex-shrink-0'>
-        <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+        <ChatInput onSend={handleSendMessage} disabled={isLoading || !currentThreadId} />
       </div>
     </div>
   )
 }
-
-

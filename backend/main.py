@@ -8,6 +8,17 @@ load_dotenv()
 
 # Import routers
 from api import auth, payment, admin, chat
+from core.database import Base, engine
+
+# Import models to register them with SQLAlchemy
+from models.chat import Thread, Message
+from models.user import User
+from models.essay import Essay
+from models.payment import Payment
+from models.evaluation import Evaluation
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="IELTS Writing Feedback AI", version="1.0.0")
 

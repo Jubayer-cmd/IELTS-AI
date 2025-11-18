@@ -41,6 +41,65 @@ export const authAPI = {
 // All IELTS evaluations and question generation are now handled through the chat interface
 
 export const chatAPI = {
+  // Thread management
+  createThread: async (title = 'New Chat') => {
+    try {
+      const response = await apiClient.post('/chat/threads', { title })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  getThreads: async () => {
+    try {
+      const response = await apiClient.get('/chat/threads')
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  getThreadMessages: async (threadId) => {
+    try {
+      const response = await apiClient.get(`/chat/threads/${threadId}/messages`)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  deleteThread: async (threadId) => {
+    try {
+      const response = await apiClient.delete(`/chat/threads/${threadId}`)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  sendMessageToThread: async (threadId, message, imageData = null, conversationState = 'greeting') => {
+    try {
+      const response = await apiClient.post(`/chat/threads/${threadId}/messages`, {
+        message: message,
+        image_data: imageData,
+        conversation_state: conversationState,
+        user_id: getUserId(),
+      })
+
+      return {
+        message: response.data.message,
+        shouldDeductCredit: response.data.should_deduct_credit,
+        conversationState: response.data.conversation_state,
+        userIntent: response.data.user_intent,
+        evaluationData: response.data.evaluation_data,
+      }
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Legacy endpoint (kept for backward compatibility)
   sendMessage: async (message, imageData = null, conversationState = 'greeting', onMessage = null) => {
     try {
       const url = `${API_BASE_URL}/chat/message`
@@ -56,13 +115,13 @@ export const chatAPI = {
           user_id: getUserId(),
         }),
       })
-      
+
       if (!response.ok) {
         throw new Error(`Failed to send message: ${response.status}`)
       }
 
       const data = await response.json()
-      
+
       // Return the full response with all new fields
       const result = {
         message: data.message,
@@ -71,14 +130,14 @@ export const chatAPI = {
         userIntent: data.user_intent,
         evaluationData: data.evaluation_data,
       }
-      
+
       // Also call onMessage callback for compatibility
       if (onMessage) {
         onMessage({ type: 'message', content: data.message, data: result })
       }
-      
+
       return result
-      
+
     } catch (error) {
       throw error
     }
