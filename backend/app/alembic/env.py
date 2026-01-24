@@ -11,7 +11,8 @@ from sqlmodel import SQLModel
 from alembic import context
 
 # Import all models to ensure they're registered with SQLModel.metadata
-from app.models import User, Essay  # noqa: F401
+from app.models.users import User  # noqa: F401
+# from app.models.essay import Essay  # Add when you create Essay model
 from app.core.config import settings
 
 # Alembic Config object

@@ -8,6 +8,7 @@ class User(SQLModel, table=True):
   email: str = Field(index=True, nullable=False, unique=True)
   hashed_password: str = Field(nullable=False)
   is_active: bool = Field(default=True, nullable=False)
+  is_verified: bool = Field(default=False)
   is_superuser: bool = Field(default=False, nullable=False)
   created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
   updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
@@ -25,6 +26,7 @@ class UserPublic(SQLModel):
   last_name: str
   email: str
   is_active: bool
+  is_verified: bool
   is_superuser: bool
   created_at: datetime
   updated_at: datetime
@@ -36,6 +38,7 @@ class UserUpdate(SQLModel):
   email: str | None = None
   password: str | None = None
   is_active: bool | None = None
+  is_verified: bool | None = None
   is_superuser: bool | None = None
   credits : int | None = None
 
