@@ -1,19 +1,15 @@
-import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Pin,
   Search,
   Plus,
-  ChevronDown,
-  Square,
   Settings,
   Sun,
   Menu,
   MessageSquarePlus,
   Trash2,
+  LogOut,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -25,6 +21,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useState, useMemo } from 'react';
+import useAuthStore from '@/store/authStore';
+import { useLogout } from '@/hooks/useAuth';
+import LoginDialog from '@/components/Auth/LoginDialog';
+import RegisterDialog from '@/components/Auth/RegisterDialog';
 
 export default function Sidebar({
   threads = [],
@@ -38,6 +38,10 @@ export default function Sidebar({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [threadToDelete, setThreadToDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Auth state and logout
+  const { user, isAuthenticated } = useAuthStore();
+  const logout = useLogout();
 
   const handleDeleteClick = (e, threadId) => {
     e.stopPropagation();
@@ -104,13 +108,23 @@ export default function Sidebar({
           </div>
         </ScrollArea>
 
-        {/* User Avatar */}
+        {/* User Avatar (collapsed) */}
         <div className='p-3 border-t border-border'>
-          <Avatar className='h-8 w-8 bg-muted'>
-            <AvatarFallback className='text-muted-foreground text-sm'>
-              J
-            </AvatarFallback>
-          </Avatar>
+          {isAuthenticated ? (
+            <Avatar className='h-8 w-8 bg-muted'>
+              <AvatarFallback className='text-muted-foreground text-sm'>
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <LoginDialog>
+              <Button size='icon' variant='ghost' className='h-8 w-8'>
+                <Avatar className='h-8 w-8 bg-muted'>
+                  <AvatarFallback className='text-muted-foreground text-sm'>?</AvatarFallback>
+                </Avatar>
+              </Button>
+            </LoginDialog>
+          )}
         </div>
       </div>
     );
@@ -190,19 +204,47 @@ export default function Sidebar({
           )}
         </ScrollArea>
 
-        {/* User Profile */}
+        {/* User Profile Section */}
         <div className='px-3 py-4 border-t border-border'>
-          <div className='flex items-center gap-3'>
-            <Avatar className='h-8 w-8 bg-muted'>
-              <AvatarFallback className='text-muted-foreground text-sm'>
-                J
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className='text-foreground text-sm font-medium'>Jubayer</div>
-              <div className='text-muted-foreground text-xs'>Free</div>
+          {isAuthenticated ? (
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <Avatar className='h-8 w-8 bg-primary/10'>
+                  <AvatarFallback className='text-primary text-sm font-medium'>
+                    {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className='min-w-0 flex-1'>
+                  <div className='text-foreground text-sm font-medium truncate'>
+                    {user?.name || user?.email?.split('@')[0] || 'User'}
+                  </div>
+                  <div className='text-muted-foreground text-xs'>Free</div>
+                </div>
+              </div>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={logout}
+                className='h-8 w-8 text-muted-foreground hover:text-foreground'
+                title='Logout'
+              >
+                <LogOut className='h-4 w-4' />
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className='flex gap-2'>
+              <LoginDialog>
+                <Button variant='outline' size='sm' className='flex-1'>
+                  Login
+                </Button>
+              </LoginDialog>
+              <RegisterDialog>
+                <Button size='sm' className='flex-1'>
+                  Sign Up
+                </Button>
+              </RegisterDialog>
+            </div>
+          )}
         </div>
       </div>
 

@@ -30,9 +30,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid - clear and redirect to login
+      // Token expired or invalid - clear auth storage
+      // Zustand's persist middleware uses 'auth-storage' key
       localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      localStorage.removeItem('auth-storage')
+      // The app will naturally show unauthenticated UI on next render
     }
     return Promise.reject(error)
   }

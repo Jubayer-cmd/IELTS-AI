@@ -1,34 +1,24 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { AuthProvider } from './services/auth'
 import ThemeProvider from '@/context/ThemeProvider'
 import Sidebar from '@/components/Chat/Sidebar'
 import MobileSidebar from '@/components/Chat/MobileSidebar'
 import HomePage from '@/pages/HomePage'
-import { useAuth } from '@/services/auth'
+import useAuthStore from '@/store/authStore'
 import { chatAPI } from '@/services/api'
-
-// TODO: Import components
-// import LoginPage from './pages/LoginPage'
-// import RegisterPage from './pages/RegisterPage'
-// import EvaluationPage from './pages/EvaluationPage'
-// import DashboardPage from './pages/DashboardPage'
-// import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Router>
-          <Shell />
-        </Router>
-      </AuthProvider>
+      <Router>
+        <Shell />
+      </Router>
     </ThemeProvider>
   )
 }
 
 function Shell() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isHydrated } = useAuthStore()
   const [isMobile, setIsMobile] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -46,10 +36,12 @@ function Shell() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Load threads on mount
+  // Load threads on mount (only after auth is hydrated)
   useEffect(() => {
-    loadThreads()
-  }, [])
+    if (isHydrated) {
+      loadThreads()
+    }
+  }, [isHydrated, isAuthenticated])
 
   const loadThreads = async () => {
     try {
@@ -111,53 +103,34 @@ function Shell() {
     }
   }
 
-  if (!isAuthenticated) {
+  // Show loading while hydrating auth from localStorage
+  if (!isHydrated) {
     return (
-      <div className="h-screen w-screen bg-background dark">
-        {isMobile ? (
-          <MobileLayout
-            threads={threads}
-            currentThreadId={currentThreadId}
-            onSelectThread={handleSelectThread}
-            onNewThread={handleNewThread}
-            onDeleteThread={handleDeleteThread}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        ) : (
-          <DesktopLayout
-            threads={threads}
-            currentThreadId={currentThreadId}
-            onSelectThread={handleSelectThread}
-            onNewThread={handleNewThread}
-            onDeleteThread={handleDeleteThread}
-            collapsed={collapsed}
-            setCollapsed={setCollapsed}
-          />
-        )}
+      <div className="h-screen w-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     )
+  }
+
+  const layoutProps = {
+    threads,
+    currentThreadId,
+    onSelectThread: handleSelectThread,
+    onNewThread: handleNewThread,
+    onDeleteThread: handleDeleteThread,
   }
 
   return (
     <div className="h-screen w-screen bg-background dark">
       {isMobile ? (
         <MobileLayout
-          threads={threads}
-          currentThreadId={currentThreadId}
-          onSelectThread={handleSelectThread}
-          onNewThread={handleNewThread}
-          onDeleteThread={handleDeleteThread}
+          {...layoutProps}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
         />
       ) : (
         <DesktopLayout
-          threads={threads}
-          currentThreadId={currentThreadId}
-          onSelectThread={handleSelectThread}
-          onNewThread={handleNewThread}
-          onDeleteThread={handleDeleteThread}
+          {...layoutProps}
           collapsed={collapsed}
           setCollapsed={setCollapsed}
         />
@@ -211,4 +184,3 @@ function MobileLayout({ threads, currentThreadId, onSelectThread, onNewThread, o
 }
 
 export default App
-
