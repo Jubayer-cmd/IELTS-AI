@@ -1,0 +1,34 @@
+{
+  "name": "ielts-writing-ai",
+  "version": "1.0.0",
+  "description": "IELTS Writing AI - Full Stack Application",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && uv run uvicorn app.main:app --reload",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && uv run pytest",
+    "test:frontend": "cd frontend && npm run test",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && uv run ruff check .",
+    "lint:frontend": "cd frontend && npm run lint",
+    "format": "npm run format:backend && npm run format:frontend",
+    "format:backend": "cd backend && uv run ruff format .",
+    "format:frontend": "cd frontend && npm run format",
+    "db:migrate": "cd backend && uv run alembic upgrade head",
+    "db:makemigrations": "cd backend && uv run alembic revision --autogenerate",
+    "db:seed": "cd backend && uv run python -m app.initial_data",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:db": "docker compose up db -d",
+    "generate-client": "cd frontend && npm run generate-client",
+    "preinstall": "cd frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

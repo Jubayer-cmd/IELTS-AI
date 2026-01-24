@@ -23,18 +23,20 @@ This project helps IELTS test takers improve their writing skills by providing:
 ## 🏗️ Architecture
 
 ### Technology Stack
-- **Frontend**: React 18 + Vite + TypeScript
-- **Backend**: FastAPI + Python 3.11+
-- **AI Framework**: LangGraph + LangChain 
-- **Package Manager**: UV (Python)
-- **Database**: SQLite (MVP) → PostgreSQL (Production)
+- **Frontend**: React 18 + Vite + TailwindCSS + Radix UI
+- **Backend**: FastAPI + Python 3.10+ + SQLModel
+- **Database**: PostgreSQL 15+
+- **AI Framework**: LangGraph + LangChain
+- **Auth**: JWT + bcrypt
+- **Package Manager**: UV (Python), npm (Node)
+- **DevOps**: Docker Compose, GitHub Actions
 
 ### System Design
 ```
 React Frontend ──► FastAPI Backend ──► LangGraph Workflow ──► Multi-LLM AI
        │                   │                   │                    │
        │                   ▼                   ▼                    │
-       │            SQLite Database    State Management            │
+       │           PostgreSQL DB       State Management            │
        │                   │                   │                    │
        └────────────── JSON API Response ◄─────────────────────────┘
 ```
@@ -78,22 +80,37 @@ React Frontend ──► FastAPI Backend ──► LangGraph Workflow ──► 
 
 ## 🤖 **FOR AI IMPLEMENTATION - STEP BY STEP**
 
-### **DATABASE MODELS (SQLAlchemy)**
+### **DATABASE MODELS (SQLModel)**
 ```python
-# Essential database tables to create:
+# Implemented in backend/app/models.py
 
-class User:
-    id, email, password_hash, credits, created_at
+class User(SQLModel, table=True):
+    id: int
+    name: str
+    email: str                  # unique, indexed
+    hashed_password: str
+    is_active: bool = True
+    is_superuser: bool = False
+    credits: int = 3            # Free trial credits
+    created_at: datetime
 
-class Essay:
-    id, user_id, content, task_type, word_count, created_at
+class Essay(SQLModel, table=True):
+    id: int
+    user_id: int                # Foreign key to User
+    text: str
+    task_type: TaskType         # TASK1 or TASK2
+    word_count: int
+    overall_score: float | None
+    task_achievement: float | None
+    coherence: float | None
+    lexical: float | None
+    grammar: float | None
+    feedback: str | None
+    created_at: datetime
 
-class Evaluation:
-    id, essay_id, overall_band_score, task_achievement_score, 
-    coherence_score, lexical_score, grammar_score, feedback_json, created_at
-
-class Payment:
-    id, user_id, amount, credits_purchased, sslcommerz_transaction_id, status
+# Payment model - TODO
+class Payment(SQLModel, table=True):
+    id, user_id, amount, credits_purchased, transaction_id, status
 ```
 
 ### **API ENDPOINTS (FastAPI)**
@@ -142,131 +159,176 @@ def evaluate_essay(essay_text, task_type):
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- LLM Provider API key (OpenAI, Anthropic, Google, or local Ollama)
-- SSLCommerz merchant account
+- Python 3.10+
+- Node.js 20+
+- PostgreSQL 15+
+- Docker (optional)
+- LLM Provider API key (OpenAI, Google, or local Ollama)
 
 ### Setup & Run
 
 ```bash
-# Backend Setup
-mkdir backend && cd backend
-uv init
-uv add fastapi uvicorn langgraph langchain-openai langchain-google-genai sqlalchemy pydantic python-multipart bcryptx python-jose sslcommerz-python
+# Clone and enter project
+git clone <repo-url>
+cd IELTS_WRITING_AI
 
-# Environment Configuration
-cat > .env << EOF
-# LLM Provider Keys (add at least one)
-OPENAI_API_KEY=your_openai_api_key_optional
-ANTHROPIC_API_KEY=your_anthropic_api_key_optional
-GOOGLE_API_KEY=your_google_api_key_optional
-OLLAMA_BASE_URL=http://localhost:11434
+# Copy environment file and edit values
+cp .env.example .env
 
-# Payment Integration
-SSLCOMMERZ_STORE_ID=your_store_id
-SSLCOMMERZ_STORE_PASSWORD=your_store_password
-SSLCOMMERZ_IS_SANDBOX=true
+# Start PostgreSQL (using Docker)
+npm run docker:db
 
-# Application Config
-JWT_SECRET_KEY=your_jwt_secret
-DATABASE_URL=sqlite:///./app.db
-DEFAULT_LLM_PROVIDER=ollama
-DEFAULT_LLM_MODEL=llama2
-EOF
-
-# Run Backend
-uv run uvicorn main:app --reload
-
-# Frontend Setup (new terminal)
+# Install dependencies
+npm install                    # Frontend deps
+cd backend && uv sync          # Backend deps
 cd ..
-npm create vite@latest frontend -- --template react
-cd frontend
-npm install axios react-router-dom shadcn-ui lucide-react
 
-# Run Frontend
+# Run both frontend and backend
 npm run dev
+```
+
+### Using Docker (Recommended)
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
+```
+
+### Available Scripts
+
+```bash
+# Development
+npm run dev              # Run backend + frontend
+npm run dev:backend      # Backend only (port 8000)
+npm run dev:frontend     # Frontend only (port 5173)
+
+# Database
+npm run docker:db        # Start PostgreSQL
+npm run db:migrate       # Run migrations
+npm run db:seed          # Seed initial data
+
+# Testing & Quality
+npm run test             # Run all tests
+npm run lint             # Lint code
+npm run format           # Format code
+
+# Docker
+npm run docker:up        # Start all services
+npm run docker:down      # Stop services
 ```
 
 ### Access
 - **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+- **Backend API**: http://localhost:8000
+- **API Docs (Swagger)**: http://localhost:8000/docs
+- **API Docs (ReDoc)**: http://localhost:8000/redoc
 
 ### Usage
 1. Register/Login to get credits
 2. Purchase evaluation credits via SSLCommerz
 3. Submit IELTS essay for evaluation
-4. Get instant AI feedback and band scores from multiple LLMs
+4. Get instant AI feedback and band scores
 
-## 📁 Project Structure
+## 📁 Project Structure (Monorepo)
+
+Based on [FastAPI Full-Stack Template](https://github.com/fastapi/full-stack-fastapi-template).
 
 ```
 IELTS_WRITING_AI/
+├── .env                           # Root environment variables
+├── .gitignore                     # Git ignore rules
+├── .pre-commit-config.yaml        # Code quality hooks
+├── .github/workflows/             # CI/CD pipelines
+├── package.json                   # Monorepo scripts
+├── pyproject.toml                 # Python workspace config
+├── compose.yml                    # Docker Compose (production)
+├── compose.override.yml           # Docker Compose (development)
+├── scripts/                       # Utility scripts
+│   ├── test.sh
+│   ├── lint.sh
+│   ├── format.sh
+│   └── prestart.sh
+│
 ├── backend/
-│   ├── main.py                    # FastAPI application
-│   ├── core/
-│   │   ├── config.py              # Environment configuration
-│   │   ├── security.py            # JWT authentication
-│   │   └── database.py            # Database connection
-│   ├── services/
-│   │   ├── ielts_evaluator.py     # LangGraph evaluation
-│   │   ├── payment_service.py     # SSLCommerz integration
-│   │   └── user_service.py        # User management
-│   ├── models/
-│   │   ├── user.py                # User database models
-│   │   ├── payment.py             # Payment models
-│   │   └── evaluation.py          # Essay evaluation models
-│   ├── api/
-│   │   ├── auth.py                # Authentication endpoints
-│   │   ├── payment.py             # Payment endpoints
-│   │   └── evaluation.py          # Evaluation endpoints
-│   └── .env
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Auth/              # Login/Register
-│   │   │   ├── Payment/           # Credit purchase
-│   │   │   ├── Evaluation/        # Essay evaluation
-│   │   │   └── Dashboard/         # User dashboard
-│   │   ├── services/
-│   │   │   ├── api.js             # API client
-│   │   │   ├── auth.js            # Authentication
-│   │   │   └── payment.js         # Payment handling
-│   │   └── App.jsx
-│   └── package.json
-└── README.md
+│   ├── Dockerfile
+│   ├── pyproject.toml
+│   ├── alembic.ini                # Database migrations config
+│   ├── tests/
+│   │   ├── conftest.py
+│   │   └── test_auth.py
+│   └── app/
+│       ├── main.py                # FastAPI application
+│       ├── models.py              # SQLModel models (User, Essay)
+│       ├── crud.py                # CRUD operations
+│       ├── utils.py               # Utility functions
+│       ├── initial_data.py        # Seed data script
+│       ├── api/
+│       │   ├── main.py            # Router aggregation
+│       │   ├── deps.py            # Dependencies (auth, db)
+│       │   └── routes/
+│       │       ├── auth.py        # /api/v1/auth/*
+│       │       ├── users.py       # /api/v1/users/*
+│       │       └── writing.py     # /api/v1/writing/*
+│       ├── core/
+│       │   ├── config.py          # Pydantic Settings
+│       │   ├── db.py              # Database engine
+│       │   └── security.py        # JWT & password hashing
+│       └── alembic/
+│           └── versions/          # Migration files
+│
+└── frontend/
+    ├── Dockerfile
+    ├── package.json
+    └── src/
+        ├── components/
+        │   ├── Auth/              # Login/Register
+        │   ├── Chat/              # Chat interface
+        │   └── ui/                # Radix UI components
+        ├── services/
+        │   ├── api.jsx            # API client with auth
+        │   └── auth.jsx           # Authentication context
+        └── pages/
 ```
 
 ## 🔧 API Endpoints
 
+All endpoints are prefixed with `/api/v1`
+
 ### Authentication
-```
-POST /auth/register    # User registration
-POST /auth/login       # User login
-GET  /auth/me          # Get current user
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | User registration |
+| POST | `/api/v1/auth/login` | Get access token (OAuth2) |
+| GET | `/api/v1/auth/me` | Get current user |
 
-### Payment (SSLCommerz)
-```
-POST /payment/initiate     # Initiate payment
-POST /payment/success      # Payment success callback
-POST /payment/cancel       # Payment cancel callback
-GET  /payment/history      # Payment history
-```
+### Users
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/users/` | List users (paginated) |
+| GET | `/api/v1/users/{id}` | Get user by ID |
+| PATCH | `/api/v1/users/me` | Update current user |
+| DELETE | `/api/v1/users/{id}` | Delete user |
 
-### Evaluation
-```
-POST /evaluate             # Evaluate essay (requires credits)
-GET  /evaluations          # User's evaluation history
-GET  /evaluations/{id}     # Specific evaluation details
-```
+### Writing Evaluation
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/writing/evaluate` | Evaluate essay (uses 1 credit) |
+| GET | `/api/v1/writing/essays` | Get user's essays |
+| GET | `/api/v1/writing/essays/{id}` | Get specific essay |
+| DELETE | `/api/v1/writing/essays/{id}` | Delete essay |
 
-### User Management
-```
-GET  /user/credits         # Check credit balance
-GET  /user/dashboard       # User dashboard data
-```
+### Payment (SSLCommerz) - TODO
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/payment/initiate` | Initiate payment |
+| POST | `/api/v1/payment/success` | Payment success callback |
+| GET | `/api/v1/payment/history` | Payment history |
 
 ## 📊 IELTS Evaluation Criteria
 
@@ -349,8 +411,81 @@ TENANT_CONFIG = {
 ```python
 CREDIT_PACKAGES = {
     "basic": {"credits": 5, "price": 500},      # 5 evaluations for 500 BDT
-    "standard": {"credits": 15, "price": 1200}, # 15 evaluations for 1200 BDT  
+    "standard": {"credits": 15, "price": 1200}, # 15 evaluations for 1200 BDT
     "premium": {"credits": 30, "price": 2000}   # 30 evaluations for 2000 BDT
 }
 ```
+
+## ⚙️ Environment Variables
+
+All environment variables are defined in the root `.env` file:
+
+```bash
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://postgres:1234@localhost:5432/ielts_db
+
+# Security
+SECRET_KEY=your-secret-key-min-32-chars
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS
+CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+
+# LLM Providers
+OPENAI_API_KEY=sk-...
+GOOGLE_API_KEY=...
+DEFAULT_LLM_PROVIDER=ollama
+DEFAULT_LLM_MODEL=llama2
+
+# LangSmith (optional)
+LANGSMITH_TRACING=true
+LANGCHAIN_API_KEY=...
+
+# Payment - SSLCommerz
+SSLCOMMERZ_STORE_ID=...
+SSLCOMMERZ_STORE_PASSWORD=...
+SSLCOMMERZ_IS_SANDBOX=true
+
+# Frontend
+VITE_API_URL=http://localhost:8000
+```
+
+## 🧪 Testing
+
+```bash
+# Run all backend tests
+npm run test:backend
+
+# Or directly with pytest
+cd backend && uv run pytest -v
+
+# With coverage
+uv run pytest --cov=app
+```
+
+## 🚀 Deployment
+
+### Docker Compose (Recommended)
+
+```bash
+# Production
+docker compose up -d
+
+# View logs
+docker compose logs -f backend
+```
+
+### Manual Deployment
+
+1. Set up PostgreSQL database
+2. Configure `.env` with production values
+3. Run migrations: `cd backend && uv run alembic upgrade head`
+4. Seed data: `uv run python -m app.initial_data`
+5. Start backend: `uv run uvicorn app.main:app --host 0.0.0.0`
+6. Build frontend: `cd frontend && npm run build`
+7. Serve with nginx
+
+## 📄 License
+
+MIT License
 
