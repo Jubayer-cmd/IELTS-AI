@@ -20,8 +20,8 @@ def init_db() -> None:
     Called on application startup.
     In production, use Alembic migrations instead.
     """
-    # Import your models here so SQLModel registers them:
-    # from app.models import YourModel
+    # Import models so SQLModel registers them
+    from app.models.users import User  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
 

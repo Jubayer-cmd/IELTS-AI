@@ -1,27 +1,50 @@
 """
 Security utilities for password hashing and JWT tokens.
 
-Following FastAPI full-stack template pattern.
+Uses bcrypt directly (more reliable than passlib with newer Python).
 """
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from jose import jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Verify a password against its hash.
+
+    Args:
+        plain_password: The password user entered
+        hashed_password: The hash stored in database
+
+    Returns:
+        True if password matches, False otherwise
+    """
+    # bcrypt needs bytes, not strings
+    password_bytes = plain_password.encode('utf-8')
+    hash_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hash_bytes)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password for storing."""
-    return pwd_context.hash(password)
+    """
+    Hash a password for storing in database.
+
+    Args:
+        password: Plain text password
+
+    Returns:
+        Bcrypt hash string
+    """
+    # bcrypt needs bytes
+    password_bytes = password.encode('utf-8')
+    # Generate salt and hash
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # Return as string for database storage
+    return hashed.decode('utf-8')
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

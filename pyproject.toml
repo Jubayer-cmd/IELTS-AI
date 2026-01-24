@@ -4,6 +4,9 @@ version = "1.0.0"
 description = "IELTS Writing AI - Full Stack FastAPI Application"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = [
+    "bcrypt>=5.0.0",
+]
 
 [tool.uv.workspace]
 members = ["backend"]
