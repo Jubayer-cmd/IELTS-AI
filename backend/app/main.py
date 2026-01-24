@@ -1,8 +1,3 @@
-"""
-FastAPI Application Entry Point.
-
-Following FastAPI full-stack template pattern.
-"""
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

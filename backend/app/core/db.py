@@ -1,7 +1,5 @@
 """
-Database configuration and session management.
-
-Following FastAPI full-stack template pattern.
+Database configuration.
 """
 from sqlmodel import SQLModel, create_engine, Session
 
@@ -22,17 +20,15 @@ def init_db() -> None:
     Called on application startup.
     In production, use Alembic migrations instead.
     """
+    # Import your models here so SQLModel registers them:
+    # from app.models import YourModel
+
     SQLModel.metadata.create_all(engine)
 
 
 def get_session():
     """
     Database session generator for dependency injection.
-
-    Usage:
-        @router.get("/items")
-        def get_items(session: Session = Depends(get_session)):
-            ...
     """
     with Session(engine) as session:
         yield session
