@@ -4,6 +4,8 @@ import ThemeProvider from '@/context/ThemeProvider'
 import Sidebar from '@/components/Chat/Sidebar'
 import MobileSidebar from '@/components/Chat/MobileSidebar'
 import HomePage from '@/pages/HomePage'
+import LoginPage from '@/pages/LoginPage'
+import RegisterPage from '@/pages/RegisterPage'
 import useAuthStore from '@/store/authStore'
 import { chatAPI } from '@/services/api'
 
@@ -11,7 +13,11 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <Shell />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/*" element={<Shell />} />
+        </Routes>
       </Router>
     </ThemeProvider>
   )
@@ -24,7 +30,6 @@ function Shell() {
   const [collapsed, setCollapsed] = useState(false)
   const [threads, setThreads] = useState([])
   const [currentThreadId, setCurrentThreadId] = useState(null)
-  const [isLoadingThreads, setIsLoadingThreads] = useState(true)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -45,7 +50,6 @@ function Shell() {
 
   const loadThreads = async () => {
     try {
-      setIsLoadingThreads(true)
       const fetchedThreads = await chatAPI.getThreads()
       setThreads(fetchedThreads)
 
@@ -60,8 +64,6 @@ function Shell() {
       }
     } catch (error) {
       console.error('Failed to load threads:', error)
-    } finally {
-      setIsLoadingThreads(false)
     }
   }
 
@@ -142,7 +144,8 @@ function Shell() {
 function DesktopLayout({ threads, currentThreadId, onSelectThread, onNewThread, onDeleteThread, collapsed, setCollapsed }) {
   return (
     <div className="flex h-full">
-      <div className={`${collapsed ? 'w-16' : 'w-64'} h-full transition-all duration-300 border-r border-border`}>
+      {/* Sidebar */}
+      <div className={`${collapsed ? 'w-16' : 'w-64'} transition-all duration-300 flex-shrink-0 border-r border-border`}>
         <Sidebar
           collapsed={collapsed}
           onToggle={() => setCollapsed(!collapsed)}
@@ -153,7 +156,8 @@ function DesktopLayout({ threads, currentThreadId, onSelectThread, onNewThread, 
           onDeleteThread={onDeleteThread}
         />
       </div>
-      <main className="flex-1 h-full flex flex-col overflow-hidden">
+      {/* Main content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
         <Routes>
           <Route path="/" element={<HomePage currentThreadId={currentThreadId} />} />
         </Routes>

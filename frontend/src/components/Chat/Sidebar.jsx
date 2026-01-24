@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Search,
-  Plus,
-  Settings,
-  Sun,
   Menu,
   MessageSquarePlus,
   Trash2,
   LogOut,
+  LogIn,
+  Plus,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -21,10 +22,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { useLogout } from '@/hooks/useAuth';
-import LoginDialog from '@/components/Auth/LoginDialog';
-import RegisterDialog from '@/components/Auth/RegisterDialog';
 
 export default function Sidebar({
   threads = [],
@@ -69,11 +69,11 @@ export default function Sidebar({
 
   if (collapsed) {
     return (
-      <div className='h-full bg-card border-r border-border flex flex-col items-center'>
-        {/* Collapse Toggle */}
+      <div className='h-full bg-card flex flex-col items-center'>
+        {/* Expand Toggle */}
         <div className='p-3'>
-          <button onClick={onToggle} className='p-2 hover:bg-accent rounded'>
-            <Menu className='h-5 w-5 text-foreground' />
+          <button onClick={onToggle} className='p-2 hover:bg-accent rounded' title='Expand sidebar'>
+            <PanelLeft className='h-5 w-5 text-foreground' />
           </button>
         </div>
 
@@ -117,13 +117,13 @@ export default function Sidebar({
               </AvatarFallback>
             </Avatar>
           ) : (
-            <LoginDialog>
-              <Button size='icon' variant='ghost' className='h-8 w-8'>
-                <Avatar className='h-8 w-8 bg-muted'>
-                  <AvatarFallback className='text-muted-foreground text-sm'>?</AvatarFallback>
-                </Avatar>
-              </Button>
-            </LoginDialog>
+            <Link to='/login'>
+              <Avatar className='h-8 w-8 bg-muted hover:bg-accent transition-colors cursor-pointer'>
+                <AvatarFallback className='text-muted-foreground text-sm'>
+                  <LogIn className='h-4 w-4' />
+                </AvatarFallback>
+              </Avatar>
+            </Link>
           )}
         </div>
       </div>
@@ -132,23 +132,15 @@ export default function Sidebar({
 
   return (
     <>
-      <div className='h-full bg-card border-r border-border flex flex-col'>
+      <div className='h-full bg-card flex flex-col'>
         {/* Header */}
         <div className='flex items-center justify-between px-4 py-4'>
-          <div className='flex items-center gap-2 text-foreground font-semibold text-lg'>
-            <button onClick={onToggle} className='p-1 hover:bg-accent rounded'>
-              <Menu className='h-4 w-4 text-muted-foreground' />
-            </button>
+          <div className='text-foreground font-semibold text-lg'>
             IELTSAI
           </div>
-          <div className='flex items-center gap-2'>
-            <button className='p-1 hover:bg-accent rounded'>
-              <Settings className='h-4 w-4 text-muted-foreground' />
-            </button>
-            <button className='p-1 hover:bg-accent rounded'>
-              <Sun className='h-4 w-4 text-muted-foreground' />
-            </button>
-          </div>
+          <button onClick={onToggle} className='p-1 hover:bg-accent rounded' title='Collapse sidebar'>
+            <PanelLeftClose className='h-4 w-4 text-muted-foreground' />
+          </button>
         </div>
 
         {/* New Chat Button */}
@@ -232,18 +224,12 @@ export default function Sidebar({
               </Button>
             </div>
           ) : (
-            <div className='flex gap-2'>
-              <LoginDialog>
-                <Button variant='outline' size='sm' className='flex-1'>
-                  Login
-                </Button>
-              </LoginDialog>
-              <RegisterDialog>
-                <Button size='sm' className='flex-1'>
-                  Sign Up
-                </Button>
-              </RegisterDialog>
-            </div>
+            <Link to='/login' className='flex items-center gap-3 w-full hover:bg-accent rounded-lg p-2 transition-colors'>
+              <div className='h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center'>
+                <LogIn className='h-4 w-4 text-primary' />
+              </div>
+              <span className='text-foreground text-sm font-medium'>Login</span>
+            </Link>
           )}
         </div>
       </div>

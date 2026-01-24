@@ -16,7 +16,7 @@ export default function HomePage({ onMenuClick, currentThreadId }) {
         <ChatWindow currentThreadId={currentThreadId} />
       </div>
 
-      {/* Floating controls - responsive positioning */}
+      {/* Floating controls - top right corner */}
       <FloatingControls />
     </div>
   )

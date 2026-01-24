@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, useRef } from 'react'
 
 const ThemeContext = createContext()
 
@@ -11,21 +11,29 @@ function applyThemeClass(theme) {
 }
 
 export default function ThemeProvider({ children }) {
-  const [primary, setPrimary] = useState('violet')
-
-  useEffect(() => {
+  const [primary, setPrimary] = useState(() => {
+    // Initialize from localStorage
     const saved = localStorage.getItem('theme-primary')
     if (saved && COLOR_THEMES.includes(saved)) {
-      setPrimary(saved)
-      applyThemeClass(saved)
-    } else {
-      // Make sure violet is applied as default
-      setPrimary('violet')
-      applyThemeClass('violet')
+      return saved
     }
+    return 'violet'
+  })
+
+  const isInitialMount = useRef(true)
+
+  // Apply theme class on mount
+  useEffect(() => {
+    applyThemeClass(primary)
   }, [])
 
+  // Apply theme and save when primary changes (but not on initial mount)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+
     applyThemeClass(primary)
     localStorage.setItem('theme-primary', primary)
   }, [primary])
@@ -40,5 +48,3 @@ export function useTheme() {
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
   return ctx
 }
-
-

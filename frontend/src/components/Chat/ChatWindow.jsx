@@ -176,12 +176,6 @@ export default function ChatWindow({ currentThreadId }) {
 
   return (
     <div className='h-full flex flex-col bg-transparent'>
-      {/* Header */}
-      <div className='p-3 md:p-4 border-b border-border bg-card flex-shrink-0'>
-        <h2 className='font-semibold text-foreground text-base md:text-lg'>IELTS Writing Assistant</h2>
-      </div>
-
-
       {/* Messages Area - scrollable */}
       <div className='flex-1 overflow-y-auto'>
         <MessageList messages={messages} isLoading={isLoading} />

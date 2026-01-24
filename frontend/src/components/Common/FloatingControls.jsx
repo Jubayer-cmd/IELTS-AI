@@ -1,16 +1,20 @@
 import SettingsDialog from '@/components/Settings/SettingsDialog'
 import { Button } from '@/components/ui/button'
+import { SlidersHorizontal } from 'lucide-react'
 
 export default function FloatingControls() {
   return (
-    <div className='fixed right-4 md:right-6 top-4 md:top-6 z-50 flex items-center gap-2'>
+    <div className='fixed top-4 right-4 z-50'>
       <SettingsDialog>
-        <Button variant='outline' className='rounded-full text-xs md:text-sm px-3 md:px-4'>
-          Theme
+        <Button
+          variant='ghost'
+          size='icon'
+          className='h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent/30'
+          title='Theme'
+        >
+          <SlidersHorizontal className='h-4 w-4' />
         </Button>
       </SettingsDialog>
     </div>
   )
 }
-
-
