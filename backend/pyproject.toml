@@ -25,6 +25,7 @@ dependencies = [
     "sqlmodel>=0.0.31",
     "uvicorn[standard]>=0.36.0",
     "bcrypt>=5.0.0",
+    "langchain-core>=1.2.7",
 ]
 
 [project.optional-dependencies]

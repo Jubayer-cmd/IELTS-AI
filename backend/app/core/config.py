@@ -37,10 +37,8 @@ class Settings(BaseSettings):
     # ───────────────────────────────────────────
     # LLM Provider Keys
     # ───────────────────────────────────────────
-    OPENAI_API_KEY: str | None = None
+    OPENROUTER_API_KEY: str | None = None
     GOOGLE_API_KEY: str | None = None
-    DEFAULT_LLM_PROVIDER: str = "ollama"
-    DEFAULT_LLM_MODEL: str = "llama2"
 
     # ───────────────────────────────────────────
     # LangSmith Tracing
