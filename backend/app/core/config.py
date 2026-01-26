@@ -4,9 +4,11 @@ Application Configuration using Pydantic Settings.
 This provides type-safe configuration with validation at startup.
 All environment variables are loaded and validated here.
 """
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+
 from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):

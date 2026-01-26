@@ -1,14 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Button } from '@/components/ui/button'
 import MessageList from '@/components/Chat/MessageList'
 import ChatInput from '@/components/Chat/ChatInput'
 import { chatAPI } from '@/services/api'
 
 export default function ChatWindow({ currentThreadId }) {
   const [messages, setMessages] = useState([])
-  const [conversationState, setConversationState] = useState('greeting')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
@@ -40,7 +36,8 @@ export default function ChatWindow({ currentThreadId }) {
         id: msg.id,
         role: msg.role === 'user' ? 'user' : 'ai',
         content: msg.content,
-        type: 'message',
+        type: msg.message_type || 'text',
+        evaluation: msg.evaluation ? JSON.parse(msg.evaluation) : null,
         timestamp: new Date(msg.created_at)
       }))
 
@@ -52,26 +49,6 @@ export default function ChatWindow({ currentThreadId }) {
     }
   }
 
-  const addMessage = useCallback((role, content, type = 'message') => {
-    setMessages(prev => [...prev, {
-      id: Date.now() + Math.random(),
-      role,
-      content,
-      type,
-      timestamp: new Date()
-    }])
-  }, [])
-
-  const updateLastMessage = useCallback((content) => {
-    setMessages(prev => {
-      const updated = [...prev]
-      if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-        updated[updated.length - 1].content += content
-      }
-      return updated
-    })
-  }, [])
-
   const handleSendMessage = useCallback(async (message) => {
     if (!message.trim() || isLoading || !currentThreadId) {
       return
@@ -79,100 +56,52 @@ export default function ChatWindow({ currentThreadId }) {
 
     setIsLoading(true)
 
-    // Add user message
-    addMessage('user', message)
-
-    // Add placeholder AI message
-    addMessage('ai', '')
+    // Optimistically add user message to UI
+    const tempUserMsg = {
+      id: `temp-${Date.now()}`,
+      role: 'user',
+      content: message,
+      type: 'text',
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, tempUserMsg])
 
     try {
-      const response = await chatAPI.sendMessageToThread(
-        currentThreadId,
-        message,
-        null,
-        conversationState
-      )
+      // Send message to backend
+      const response = await chatAPI.sendMessage(currentThreadId, message)
 
-      // Handle the full response
-      if (response) {
-        // Update conversation state
-        setConversationState(response.conversationState)
-
-        // Update the AI message with the response
-        setMessages(prev => {
-          const updated = [...prev]
-          if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-            updated[updated.length - 1].content = response.message
-            // Add evaluation data if present
-            if (response.evaluationData) {
-              updated[updated.length - 1].evaluationData = response.evaluationData
-            }
-          }
-          return updated
-        })
-      }
-    } catch (error) {
+      // Replace temp message with actual response
       setMessages(prev => {
-        const updated = [...prev]
-        if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-          updated[updated.length - 1].content = 'Sorry, I encountered an error. Please try again.'
-          updated[updated.length - 1].type = 'error'
-        }
-        return updated
+        const updated = prev.filter(m => m.id !== tempUserMsg.id)
+        return [...updated, {
+          id: response.id,
+          role: 'user',
+          content: response.content,
+          type: response.message_type || 'text',
+          timestamp: new Date(response.created_at)
+        }]
+      })
+
+      // TODO: When LangGraph is integrated, the backend will return
+      // an AI response which should be added here
+
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      // Remove the optimistic message and show error
+      setMessages(prev => {
+        const updated = prev.filter(m => m.id !== tempUserMsg.id)
+        return [...updated, {
+          id: `error-${Date.now()}`,
+          role: 'ai',
+          content: 'Sorry, I encountered an error. Please try again.',
+          type: 'error',
+          timestamp: new Date()
+        }]
       })
     } finally {
       setIsLoading(false)
     }
-  }, [currentThreadId, conversationState, isLoading, addMessage])
-
-  const handleGenerateQuestion = useCallback(async (taskType = 'Task 2') => {
-    if (isLoading || !currentThreadId) return
-
-    setIsLoading(true)
-
-    const questionMessage = `Generate an IELTS Writing ${taskType} question for me to practice.`
-
-    // Add user request
-    addMessage('user', `Generate a ${taskType} question`)
-
-    // Add placeholder AI message
-    addMessage('ai', '')
-
-    try {
-      const response = await chatAPI.sendMessageToThread(
-        currentThreadId,
-        questionMessage,
-        null,
-        'waiting_for_preference'
-      )
-
-      // Handle the full response
-      if (response) {
-        // Update conversation state
-        setConversationState(response.conversationState)
-
-        // Update the AI message with the response
-        setMessages(prev => {
-          const updated = [...prev]
-          if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-            updated[updated.length - 1].content = response.message
-          }
-          return updated
-        })
-      }
-    } catch (error) {
-      setMessages(prev => {
-        const updated = [...prev]
-        if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
-          updated[updated.length - 1].content = 'Sorry, I couldn\'t generate a question. Please try again.'
-          updated[updated.length - 1].type = 'error'
-        }
-        return updated
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentThreadId, isLoading, addMessage])
+  }, [currentThreadId, isLoading])
 
   return (
     <div className='h-full flex flex-col bg-transparent'>

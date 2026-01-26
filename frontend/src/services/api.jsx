@@ -53,16 +53,6 @@ export const getAuthToken = () => {
   return localStorage.getItem('access_token')
 }
 
-// Simple user ID for anonymous sessions (fallback)
-const getUserId = () => {
-  let userId = localStorage.getItem('ielts_user_id')
-  if (!userId) {
-    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    localStorage.setItem('ielts_user_id', userId)
-  }
-  return userId
-}
-
 // Auth API
 export const authAPI = {
   register: async (userData) => {
@@ -98,137 +88,58 @@ export const authAPI = {
   },
 }
 
-// Note: Evaluation functionality has been moved to chatAPI
-// All IELTS evaluations and question generation are now handled through the chat interface
-
+// Chat API - Thread and message management
 export const chatAPI = {
-  // Thread management
-  createThread: async (title = 'New Chat') => {
-    try {
-      const response = await apiClient.post('/chat/threads', { title })
-      return response.data
-    } catch (error) {
-      throw error
-    }
+  /**
+   * Create a new chat thread
+   * @param {string} title - Optional thread title
+   * @returns {Promise<{id: number, title: string|null, created_at: string, updated_at: string}>}
+   */
+  createThread: async (title = null) => {
+    const response = await apiClient.post('/chat/threads', { title })
+    return response.data
   },
 
+  /**
+   * Get all threads for the current user
+   * @returns {Promise<Array<{id: number, title: string|null, created_at: string, updated_at: string}>>}
+   */
   getThreads: async () => {
-    try {
-      const response = await apiClient.get('/chat/threads')
-      return response.data
-    } catch (error) {
-      throw error
-    }
+    const response = await apiClient.get('/chat/threads')
+    return response.data
   },
 
+  /**
+   * Get all messages in a thread
+   * @param {number} threadId
+   * @returns {Promise<Array<{id: number, thread_id: number, role: string, message_type: string, content: string, evaluation: string|null, created_at: string}>>}
+   */
   getThreadMessages: async (threadId) => {
-    try {
-      const response = await apiClient.get(`/chat/threads/${threadId}/messages`)
-      return response.data
-    } catch (error) {
-      throw error
-    }
+    const response = await apiClient.get(`/chat/threads/${threadId}/messages`)
+    return response.data
   },
 
+  /**
+   * Delete a thread and all its messages
+   * @param {number} threadId
+   * @returns {Promise<{message: string}>}
+   */
   deleteThread: async (threadId) => {
-    try {
-      const response = await apiClient.delete(`/chat/threads/${threadId}`)
-      return response.data
-    } catch (error) {
-      throw error
-    }
+    const response = await apiClient.delete(`/chat/threads/${threadId}`)
+    return response.data
   },
 
-  sendMessageToThread: async (threadId, message, imageData = null, conversationState = 'greeting') => {
-    try {
-      const response = await apiClient.post(`/chat/threads/${threadId}/messages`, {
-        message: message,
-        image_data: imageData,
-        conversation_state: conversationState,
-        user_id: getUserId(),
-      })
-
-      return {
-        message: response.data.message,
-        shouldDeductCredit: response.data.should_deduct_credit,
-        conversationState: response.data.conversation_state,
-        userIntent: response.data.user_intent,
-        evaluationData: response.data.evaluation_data,
-      }
-    } catch (error) {
-      throw error
-    }
-  },
-
-  // Legacy endpoint (kept for backward compatibility)
-  sendMessage: async (message, imageData = null, conversationState = 'greeting', onMessage = null) => {
-    try {
-      const url = `${API_BASE_URL}/chat/message`
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: message,
-          image_data: imageData,
-          conversation_state: conversationState,
-          user_id: getUserId(),
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to send message: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      // Return the full response with all new fields
-      const result = {
-        message: data.message,
-        shouldDeductCredit: data.should_deduct_credit,
-        conversationState: data.conversation_state,
-        userIntent: data.user_intent,
-        evaluationData: data.evaluation_data,
-      }
-
-      // Also call onMessage callback for compatibility
-      if (onMessage) {
-        onMessage({ type: 'message', content: data.message, data: result })
-      }
-
-      return result
-
-    } catch (error) {
-      throw error
-    }
-  },
-
-  generateQuestion: async (taskType = 'Task 2', onMessage = null) => {
-    try {
-      const message = `Generate an IELTS Writing ${taskType} question for me to practice.`
-      return await chatAPI.sendMessage(message, null, 'waiting_for_preference', onMessage)
-    } catch (error) {
-      throw error
-    }
-  },
-
-  evaluateEssay: async (essayText, taskType = 'Task 2', imageData = null, onMessage = null) => {
-    try {
-      const message = `Please evaluate this IELTS Writing ${taskType} essay and provide detailed feedback:\n\n${essayText}`
-      return await chatAPI.sendMessage(message, imageData, 'waiting_for_essay', onMessage)
-    } catch (error) {
-      throw error
-    }
-  },
-
-  getSessionHistory: async (sessionId) => {
-    try {
-      const response = await apiClient.get(`/chat/sessions/${sessionId}/history`)
-      return response.data
-    } catch (error) {
-      throw error
-    }
+  /**
+   * Send a message to a thread
+   * @param {number} threadId
+   * @param {string} content - The message content
+   * @returns {Promise<{id: number, thread_id: number, role: string, message_type: string, content: string, evaluation: string|null, created_at: string}>}
+   */
+  sendMessage: async (threadId, content) => {
+    const response = await apiClient.post(`/chat/threads/${threadId}/messages`, {
+      content: content,
+    })
+    return response.data
   },
 }
 

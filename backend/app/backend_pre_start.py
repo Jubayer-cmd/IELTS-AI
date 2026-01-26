@@ -6,6 +6,7 @@ Used in Docker deployments.
 
 Run with: python -m app.backend_pre_start
 """
+
 import logging
 
 from sqlalchemy import text

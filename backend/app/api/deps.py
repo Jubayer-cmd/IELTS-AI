@@ -3,16 +3,17 @@ API Dependencies.
 
 Reusable dependencies for FastAPI route handlers.
 """
+
 from collections.abc import Generator
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlmodel import Session
-from jose import jwt, JWTError
 
-from app.core.db import engine
 from app.core.config import settings
+from app.core.db import engine
 from app.models.users import User
 
 
@@ -55,9 +56,7 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
     try:
         # Decode the JWT token → get payload dictionary
         payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
 
         # Get user_id from payload ("sub" = subject = user ID)

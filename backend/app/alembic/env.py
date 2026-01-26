@@ -3,17 +3,18 @@ Alembic migration environment.
 
 Configured for SQLModel with async support if needed.
 """
+
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlmodel import SQLModel
 
-from alembic import context
+from app.core.config import settings
+from app.models.chat import ChatMessage, Thread  # noqa: F401
 
 # Import all models to ensure they're registered with SQLModel.metadata
 from app.models.users import User  # noqa: F401
-# from app.models.essay import Essay  # Add when you create Essay model
-from app.core.config import settings
 
 # Alembic Config object
 config = context.config

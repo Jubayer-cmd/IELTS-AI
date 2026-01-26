@@ -1,6 +1,7 @@
 """
 Pytest configuration and fixtures.
 """
+
 import os
 from collections.abc import Generator
 
@@ -8,14 +9,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.main import app
 from app.api.deps import get_db
-
+from app.main import app
 
 # Use PostgreSQL for tests (same as production)
 TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql://postgres:1234@localhost:5432/ielts_test"
+    "TEST_DATABASE_URL", "postgresql://postgres:1234@localhost:5432/ielts_test"
 )
 
 
@@ -33,6 +32,7 @@ def session_fixture() -> Generator[Session, None, None]:
 @pytest.fixture(name="client")
 def client_fixture(session: Session) -> Generator[TestClient, None, None]:
     """Create a test client with database override."""
+
     def get_session_override():
         return session
 

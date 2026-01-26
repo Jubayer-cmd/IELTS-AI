@@ -3,6 +3,7 @@ Initial data seeding script.
 
 Run with: python -m app.initial_data
 """
+
 import logging
 
 from app.core.db import init_db
