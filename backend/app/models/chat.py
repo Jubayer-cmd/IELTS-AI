@@ -7,7 +7,7 @@ while providing database persistence for the frontend chat UI.
 
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from models.common import _utc_now
+from models.common import utc_now
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -31,8 +31,8 @@ class Thread(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True, nullable=False)
     title: str | None = Field(default=None, max_length=255)
-    created_at: datetime = Field(default_factory=_utc_now, nullable=False)
-    updated_at: datetime = Field(default_factory=_utc_now, nullable=False)
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+    updated_at: datetime = Field(default_factory=utc_now, nullable=False)
 
     # Relationships
     user: "User" = Relationship(back_populates="threads")
@@ -58,8 +58,8 @@ class ChatMessage(SQLModel, table=True):
     message_type: str = Field(default="text", max_length=32, nullable=False)
     content: str = Field(nullable=False)
     evaluation: str | None = Field(default=None)
-    created_at: datetime = Field(default_factory=_utc_now, index=True, nullable=False)
-    updated_at: datetime = Field(default_factory=_utc_now, nullable=False)
+    created_at: datetime = Field(default_factory=utc_now, index=True, nullable=False)
+    updated_at: datetime = Field(default_factory=utc_now, nullable=False)
 
     # Relationship
     thread: Thread = Relationship(back_populates="messages")
