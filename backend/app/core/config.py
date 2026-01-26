@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # ───────────────────────────────────────────
     # LLM Provider Keys
     # ───────────────────────────────────────────
-    OPENROUTER_API_KEY: str | None = None
+    OPENROUTER_API_KEY: str = ""
     GOOGLE_API_KEY: str | None = None
 
     # ───────────────────────────────────────────

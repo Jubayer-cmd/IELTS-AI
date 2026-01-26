@@ -13,6 +13,7 @@
     "test:frontend": "cd frontend && npm run test",
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "cd backend && uv run ruff check .",
+    "lint:backend:fix": "cd backend && uv run ruff check --fix .",
     "lint:frontend": "cd frontend && npm run lint",
     "format": "npm run format:backend && npm run format:frontend",
     "format:backend": "cd backend && uv run ruff format .",
