@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
-
+from models.common import _utc_now
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -16,8 +16,8 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True, nullable=False)
     is_verified: bool = Field(default=False)
     is_superuser: bool = Field(default=False, nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=_utc_now, nullable=False)
+    updated_at: datetime = Field(default_factory=_utc_now, nullable=False)
     credits: int = Field(default=50, nullable=False)
 
     # Relationships

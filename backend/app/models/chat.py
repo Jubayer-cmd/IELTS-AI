@@ -7,16 +7,12 @@ while providing database persistence for the frontend chat UI.
 
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-
+from models.common import _utc_now
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from app.models.users import User
 
-
-def _utc_now() -> datetime:
-    """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
 
 
 # ═══════════════════════════════════════════════════════════════
