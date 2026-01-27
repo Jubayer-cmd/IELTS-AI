@@ -47,8 +47,12 @@ export default function MessageList({ messages = [], isLoading = false }) {
                   </div>
                 ) : message.role === 'ai' ? (
                   // Render markdown for AI responses using Streamdown (optimized for streaming)
+                  // Key changes when streaming ends to force Streamdown to re-parse tables
                   <Streamdown
+                    key={`${message.id}-${message.isStreaming ? 'streaming' : 'static'}`}
+                    mode={message.isStreaming ? 'streaming' : 'static'}
                     isAnimating={message.isStreaming}
+                    parseIncompleteMarkdown={true}
                     caret={message.isStreaming ? 'block' : undefined}
                     controls={{
                       table: true,  // Copy/download buttons for tables

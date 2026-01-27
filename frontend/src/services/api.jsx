@@ -211,7 +211,9 @@ export const chatAPI = {
               }
             } catch {
               // Not JSON, it's a token chunk
-              onChunk?.(data)
+              // Decode escaped newlines (SSE doesn't support multiline data fields)
+              const decodedToken = data.replace(/\\n/g, '\n').replace(/\\\\/g, '\\')
+              onChunk?.(decodedToken)
             }
           }
         }
