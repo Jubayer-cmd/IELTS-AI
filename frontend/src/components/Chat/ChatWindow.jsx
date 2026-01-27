@@ -6,7 +6,10 @@ import { chatAPI } from '@/services/api'
 export default function ChatWindow({ currentThreadId }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const messagesEndRef = useRef(null)
+  const abortStreamRef = useRef(null)
+  const streamingMessageIdRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -18,6 +21,14 @@ export default function ChatWindow({ currentThreadId }) {
 
   // Load messages when thread changes
   useEffect(() => {
+    // Abort any ongoing stream when thread changes
+    if (abortStreamRef.current) {
+      abortStreamRef.current()
+      abortStreamRef.current = null
+    }
+    setIsStreaming(false)
+    streamingMessageIdRef.current = null
+
     if (currentThreadId) {
       loadThreadMessages(currentThreadId)
     } else {
@@ -25,6 +36,15 @@ export default function ChatWindow({ currentThreadId }) {
       setIsLoading(false)
     }
   }, [currentThreadId])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortStreamRef.current) {
+        abortStreamRef.current()
+      }
+    }
+  }, [])
 
   const loadThreadMessages = async (threadId) => {
     try {
@@ -50,58 +70,92 @@ export default function ChatWindow({ currentThreadId }) {
   }
 
   const handleSendMessage = useCallback(async (message) => {
-    if (!message.trim() || isLoading || !currentThreadId) {
+    if (!message.trim() || isLoading || isStreaming || !currentThreadId) {
       return
     }
 
     setIsLoading(true)
 
     // Optimistically add user message to UI
+    const tempUserMsgId = `temp-user-${Date.now()}`
     const tempUserMsg = {
-      id: `temp-${Date.now()}`,
+      id: tempUserMsgId,
       role: 'user',
       content: message,
       type: 'text',
       timestamp: new Date()
     }
-    setMessages(prev => [...prev, tempUserMsg])
 
-    try {
-      // Send message to backend
-      const response = await chatAPI.sendMessage(currentThreadId, message)
-
-      // Replace temp message with actual response
-      setMessages(prev => {
-        const updated = prev.filter(m => m.id !== tempUserMsg.id)
-        return [...updated, {
-          id: response.id,
-          role: 'user',
-          content: response.content,
-          type: response.message_type || 'text',
-          timestamp: new Date(response.created_at)
-        }]
-      })
-
-      // TODO: When LangGraph is integrated, the backend will return
-      // an AI response which should be added here
-
-    } catch (error) {
-      console.error('Failed to send message:', error)
-      // Remove the optimistic message and show error
-      setMessages(prev => {
-        const updated = prev.filter(m => m.id !== tempUserMsg.id)
-        return [...updated, {
-          id: `error-${Date.now()}`,
-          role: 'ai',
-          content: 'Sorry, I encountered an error. Please try again.',
-          type: 'error',
-          timestamp: new Date()
-        }]
-      })
-    } finally {
-      setIsLoading(false)
+    // Create placeholder for AI streaming response
+    const streamingMsgId = `streaming-${Date.now()}`
+    streamingMessageIdRef.current = streamingMsgId
+    const streamingMsg = {
+      id: streamingMsgId,
+      role: 'ai',
+      content: '',
+      type: 'text',
+      isStreaming: true,
+      timestamp: null
     }
-  }, [currentThreadId, isLoading])
+
+    setMessages(prev => [...prev, tempUserMsg, streamingMsg])
+    setIsLoading(false)
+    setIsStreaming(true)
+
+    // Start streaming
+    const abort = chatAPI.streamMessage(currentThreadId, message, {
+      onChunk: (token) => {
+        // Append token to streaming message
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === streamingMsgId
+              ? { ...msg, content: msg.content + token }
+              : msg
+          )
+        )
+      },
+      onComplete: (metadata) => {
+        // Update message with server ID and timestamp
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === streamingMsgId
+              ? {
+                  ...msg,
+                  id: metadata.id,
+                  isStreaming: false,
+                  timestamp: new Date(metadata.created_at)
+                }
+              : msg
+          )
+        )
+        setIsStreaming(false)
+        streamingMessageIdRef.current = null
+        abortStreamRef.current = null
+      },
+      onError: (error) => {
+        console.error('Streaming error:', error)
+        // Update streaming message to show error
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === streamingMsgId
+              ? {
+                  ...msg,
+                  content: msg.content || 'Sorry, I encountered an error. Please try again.',
+                  type: 'error',
+                  isStreaming: false,
+                  timestamp: new Date()
+                }
+              : msg
+          )
+        )
+        setIsStreaming(false)
+        streamingMessageIdRef.current = null
+        abortStreamRef.current = null
+      }
+    })
+
+    abortStreamRef.current = abort
+  }, [currentThreadId, isLoading, isStreaming])
 
   return (
     <div className='h-full flex flex-col bg-transparent'>
@@ -113,7 +167,7 @@ export default function ChatWindow({ currentThreadId }) {
 
       {/* Input Area - fixed at bottom */}
       <div className='flex-shrink-0'>
-        <ChatInput onSend={handleSendMessage} disabled={isLoading || !currentThreadId} />
+        <ChatInput onSend={handleSendMessage} disabled={isLoading || isStreaming || !currentThreadId} />
       </div>
     </div>
   )

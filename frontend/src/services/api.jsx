@@ -141,6 +141,91 @@ export const chatAPI = {
     })
     return response.data
   },
+
+  /**
+   * Stream a message response via Server-Sent Events
+   * @param {number} threadId
+   * @param {string} content - The message content
+   * @param {Object} callbacks - Callback functions for streaming events
+   * @param {Function} callbacks.onChunk - Called with each token chunk
+   * @param {Function} callbacks.onComplete - Called with message metadata when complete
+   * @param {Function} callbacks.onError - Called on error
+   * @returns {Function} Abort function to cancel the stream
+   */
+  streamMessage: (threadId, content, { onChunk, onComplete, onError }) => {
+    const controller = new AbortController()
+    const token = getAuthToken()
+
+    fetch(`${API_BASE_URL}/api/v1/chat/threads/${threadId}/messages/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ content }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) break
+
+          // Decode chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true })
+
+          // Process complete SSE events (separated by double newlines)
+          const events = buffer.split('\n\n')
+          // Keep incomplete event in buffer
+          buffer = events.pop() || ''
+
+          for (const event of events) {
+            if (!event.trim()) continue
+
+            // Parse SSE format: "data: <content>"
+            const dataMatch = event.match(/^data: (.*)$/m)
+            if (!dataMatch) continue
+
+            const data = dataMatch[1]
+
+            // Check for completion signal
+            if (data === '[DONE]') {
+              return
+            }
+
+            // Try to parse as JSON (complete or error event)
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.type === 'complete') {
+                onComplete?.(parsed)
+              } else if (parsed.type === 'error') {
+                onError?.(new Error(parsed.message))
+              }
+            } catch {
+              // Not JSON, it's a token chunk
+              onChunk?.(data)
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        // Don't report abort errors (intentional cancellation)
+        if (error.name !== 'AbortError') {
+          onError?.(error)
+        }
+      })
+
+    // Return abort function for cleanup
+    return () => controller.abort()
+  },
 }
 
 export const paymentAPI = {

@@ -1,6 +1,13 @@
 import React from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
 
+// Blinking cursor component for streaming indicator
+function StreamingCursor() {
+  return (
+    <span className='inline-block w-2 h-4 ml-0.5 bg-current animate-pulse' />
+  )
+}
+
 export default function MessageList({ messages = [], isLoading = false }) {
   if (messages.length === 0) {
     return (
@@ -38,11 +45,18 @@ export default function MessageList({ messages = [], isLoading = false }) {
                   : 'bg-card text-card-foreground border border-border'
             }`}>
               <div className='text-sm md:text-sm whitespace-pre-wrap break-words'>
-                {message.content || (
+                {message.isStreaming && !message.content ? (
+                  // Show "Thinking..." when streaming just started (no content yet)
                   <div className='flex items-center gap-2 text-muted-foreground'>
                     <Loader2 className='h-4 w-4 animate-spin' />
                     <span>Thinking...</span>
                   </div>
+                ) : (
+                  // Show content with optional streaming cursor
+                  <>
+                    {message.content}
+                    {message.isStreaming && <StreamingCursor />}
+                  </>
                 )}
               </div>
 
@@ -53,7 +67,8 @@ export default function MessageList({ messages = [], isLoading = false }) {
                 </div>
               )}
 
-              {message.timestamp && (
+              {/* Hide timestamp while streaming */}
+              {message.timestamp && !message.isStreaming && (
                 <div className='text-xs opacity-50 mt-2'>
                   {new Date(message.timestamp).toLocaleTimeString()}
                 </div>

@@ -4,16 +4,23 @@ Chat API routes for thread and message management.
 These endpoints integrate with the frontend chat UI and LangGraph agent.
 """
 
+import json
+from collections.abc import AsyncGenerator
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlmodel import Session
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import engine
 from app.models.chat import (
     ChatMessageCreate,
     ChatMessagePublic,
     ThreadCreate,
     ThreadPublic,
 )
+from app.services.langgraph import process_message, stream_message_async
 
 router = APIRouter()
 
@@ -121,10 +128,10 @@ def send_message(
     current_user: CurrentUser,
 ):
     """
-    Send a message to a thread and get AI response.
+    Send a message to a thread and get AI response (non-streaming).
 
-    TODO(human): Integrate with LangGraph agent here.
-    For now, this just saves the user message.
+    Processes the user message through LangGraph agent and returns
+    the AI assistant's complete response.
     """
     thread = crud.get_thread_by_id(session=session, thread_id=thread_id)
 
@@ -137,17 +144,131 @@ def send_message(
         )
 
     # Save user message
-    user_message = crud.create_message(
+    crud.create_message(
         session=session,
         thread_id=thread_id,
         role="user",
         content=message_in.content,
     )
 
+    # Process through LangGraph agent
+    ai_response_content = process_message(
+        user_message=message_in.content,
+        thread_id=thread_id,
+    )
+
+    # Save AI response
+    ai_message = crud.create_message(
+        session=session,
+        thread_id=thread_id,
+        role="assistant",
+        content=ai_response_content,
+    )
+
     # Update thread timestamp
     crud.update_thread_timestamp(session=session, thread=thread)
 
-    # TODO(human): Call LangGraph agent here and save AI response
-    # For now, just return the user message
+    return ai_message
 
-    return user_message
+
+# ═══════════════════════════════════════════════════════════════
+# STREAMING ENDPOINT (SSE)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/threads/{thread_id}/messages/stream")
+async def stream_message_endpoint(
+    thread_id: int,
+    message_in: ChatMessageCreate,
+    session: SessionDep,
+    current_user: CurrentUser,
+):
+    """
+    Stream AI response as Server-Sent Events (SSE) with token-by-token output.
+
+    Uses astream_events for true streaming from the LLM, sending tokens
+    progressively as they're generated.
+
+    SSE Protocol:
+    - Token events: data: <token_text>
+    - Complete event: data: {"type":"complete","id":<msg_id>,"created_at":"..."}
+    - Done signal: data: [DONE]
+    """
+    thread = crud.get_thread_by_id(session=session, thread_id=thread_id)
+
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    if thread.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to post to this thread"
+        )
+
+    # Save user message immediately (before streaming starts)
+    crud.create_message(
+        session=session,
+        thread_id=thread_id,
+        role="user",
+        content=message_in.content,
+    )
+
+    # Store values for use in the async generator
+    user_content = message_in.content
+
+    async def generate_sse() -> AsyncGenerator[str, None]:
+        """Async generator that yields SSE-formatted events."""
+        accumulated_content = ""
+
+        try:
+            # Stream tokens from LangGraph using async streaming
+            async for token in stream_message_async(
+                user_message=user_content,
+                thread_id=thread_id,
+            ):
+                accumulated_content += token
+                # SSE format: "data: <content>\n\n"
+                yield f"data: {token}\n\n"
+
+            # After streaming completes, save AI message to database
+            with Session(engine) as db_session:
+                ai_message = crud.create_message(
+                    session=db_session,
+                    thread_id=thread_id,
+                    role="assistant",
+                    content=accumulated_content,
+                )
+
+                # Update thread timestamp
+                thread_to_update = crud.get_thread_by_id(
+                    session=db_session, thread_id=thread_id
+                )
+                if thread_to_update:
+                    crud.update_thread_timestamp(
+                        session=db_session, thread=thread_to_update
+                    )
+
+                # Send completion metadata
+                complete_data = {
+                    "type": "complete",
+                    "id": ai_message.id,
+                    "created_at": ai_message.created_at.isoformat(),
+                }
+                yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            # Send error event
+            error_data = {"type": "error", "message": str(e)}
+            yield f"data: {json.dumps(error_data)}\n\n"
+
+        # Signal stream end
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate_sse(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
