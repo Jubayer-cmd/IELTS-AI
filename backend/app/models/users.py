@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
-from models.common import utc_now
+from app.models.common import utc_now
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
