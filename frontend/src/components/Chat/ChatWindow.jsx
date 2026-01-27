@@ -3,7 +3,7 @@ import MessageList from '@/components/Chat/MessageList'
 import ChatInput from '@/components/Chat/ChatInput'
 import { chatAPI } from '@/services/api'
 
-export default function ChatWindow({ currentThreadId }) {
+export default function ChatWindow({ currentThreadId, onUpdateThreadTitle }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
@@ -128,6 +128,12 @@ export default function ChatWindow({ currentThreadId }) {
               : msg
           )
         )
+
+        // Update thread title if auto-generated (first message)
+        if (metadata.title && onUpdateThreadTitle) {
+          onUpdateThreadTitle(currentThreadId, metadata.title)
+        }
+
         setIsStreaming(false)
         streamingMessageIdRef.current = null
         abortStreamRef.current = null
@@ -155,7 +161,7 @@ export default function ChatWindow({ currentThreadId }) {
     })
 
     abortStreamRef.current = abort
-  }, [currentThreadId, isLoading, isStreaming])
+  }, [currentThreadId, isLoading, isStreaming, onUpdateThreadTitle])
 
   return (
     <div className='h-full flex flex-col bg-transparent'>

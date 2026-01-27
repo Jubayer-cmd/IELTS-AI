@@ -81,6 +81,17 @@ function Shell() {
     setCurrentThreadId(threadId)
   }
 
+  const handleUpdateThreadTitle = (threadId, newTitle) => {
+    // Update thread title in state (called when auto-title is generated)
+    setThreads(prev =>
+      prev.map(thread =>
+        thread.id === threadId
+          ? { ...thread, title: newTitle }
+          : thread
+      )
+    )
+  }
+
   const handleDeleteThread = async (threadId) => {
     try {
       await chatAPI.deleteThread(threadId)
@@ -120,6 +131,7 @@ function Shell() {
     onSelectThread: handleSelectThread,
     onNewThread: handleNewThread,
     onDeleteThread: handleDeleteThread,
+    onUpdateThreadTitle: handleUpdateThreadTitle,
   }
 
   return (
@@ -141,7 +153,7 @@ function Shell() {
   )
 }
 
-function DesktopLayout({ threads, currentThreadId, onSelectThread, onNewThread, onDeleteThread, collapsed, setCollapsed }) {
+function DesktopLayout({ threads, currentThreadId, onSelectThread, onNewThread, onDeleteThread, onUpdateThreadTitle, collapsed, setCollapsed }) {
   return (
     <div className="flex h-full">
       {/* Sidebar */}
@@ -159,14 +171,14 @@ function DesktopLayout({ threads, currentThreadId, onSelectThread, onNewThread, 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <Routes>
-          <Route path="/" element={<HomePage currentThreadId={currentThreadId} />} />
+          <Route path="/" element={<HomePage currentThreadId={currentThreadId} onUpdateThreadTitle={onUpdateThreadTitle} />} />
         </Routes>
       </main>
     </div>
   )
 }
 
-function MobileLayout({ threads, currentThreadId, onSelectThread, onNewThread, onDeleteThread, sidebarOpen, setSidebarOpen }) {
+function MobileLayout({ threads, currentThreadId, onSelectThread, onNewThread, onDeleteThread, onUpdateThreadTitle, sidebarOpen, setSidebarOpen }) {
   return (
     <div className="flex flex-col h-full">
       <MobileSidebar
@@ -180,7 +192,7 @@ function MobileLayout({ threads, currentThreadId, onSelectThread, onNewThread, o
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         <Routes>
-          <Route path="/" element={<HomePage onMenuClick={() => setSidebarOpen(true)} currentThreadId={currentThreadId} />} />
+          <Route path="/" element={<HomePage onMenuClick={() => setSidebarOpen(true)} currentThreadId={currentThreadId} onUpdateThreadTitle={onUpdateThreadTitle} />} />
         </Routes>
       </main>
     </div>

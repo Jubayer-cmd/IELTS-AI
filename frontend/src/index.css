@@ -190,3 +190,25 @@
 [data-streamdown] a {
   @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
 }
+
+/* ===== Streamdown Caret (Streaming Cursor) ===== */
+/* Streamdown v2 uses Tailwind v4 syntax which doesn't work with v3 */
+/* This CSS manually implements the caret for Tailwind v3 compatibility */
+
+/* Target elements with the caret CSS variable set */
+[style*="--streamdown-caret"] > *:last-child::after,
+[style*="--streamdown-caret"] > p:last-child::after,
+[style*="--streamdown-caret"] > span:last-child::after,
+[style*="--streamdown-caret"] > div:last-child::after,
+[style*="--streamdown-caret"] > ul:last-child > li:last-child::after,
+[style*="--streamdown-caret"] > ol:last-child > li:last-child::after {
+  content: var(--streamdown-caret) !important;
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+/* Handle empty state - when streaming starts with no content */
+[style*="--streamdown-caret"] > span:only-child::after {
+  content: var(--streamdown-caret) !important;
+  display: inline !important;
+}
