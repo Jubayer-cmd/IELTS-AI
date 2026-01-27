@@ -136,3 +136,57 @@
   --accent: 38 25% 14%;
   --muted: 38 20% 16%;
 }
+
+/* Streamdown customizations - move table controls to bottom-left */
+[data-streamdown="table-wrapper"] {
+  display: flex;
+  flex-direction: column-reverse; /* Moves buttons below content */
+}
+
+[data-streamdown="table-wrapper"] > div:has(button) {
+  justify-content: flex-start !important; /* Align buttons to left */
+  margin-top: 0.5rem;
+}
+
+/* Table styling enhancements */
+[data-streamdown="table"] {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* ===== English Learning App Enhancements ===== */
+
+/* Blockquotes - for sample essays and example sentences */
+[data-streamdown] blockquote {
+  @apply border-l-4 border-primary/60 bg-primary/5 px-4 py-3 my-4 rounded-r-lg;
+  font-style: italic;
+}
+
+[data-streamdown] blockquote p {
+  @apply mb-0;
+}
+
+/* Strong/Bold - highlight key vocabulary and important terms */
+[data-streamdown] strong {
+  @apply text-primary font-semibold;
+}
+
+/* Lists - better spacing for tips and feedback points */
+[data-streamdown] ul,
+[data-streamdown] ol {
+  @apply my-3 space-y-2;
+}
+
+[data-streamdown] li {
+  @apply leading-relaxed;
+}
+
+/* Horizontal rules - nice section dividers */
+[data-streamdown] hr {
+  @apply my-6 border-border/50;
+}
+
+/* Links - for reference resources */
+[data-streamdown] a {
+  @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
+}

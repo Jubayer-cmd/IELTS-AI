@@ -1,12 +1,6 @@
 import React from 'react'
+import { Streamdown } from 'streamdown'
 import { Loader2, AlertCircle } from 'lucide-react'
-
-// Blinking cursor component for streaming indicator
-function StreamingCursor() {
-  return (
-    <span className='inline-block w-2 h-4 ml-0.5 bg-current animate-pulse' />
-  )
-}
 
 export default function MessageList({ messages = [], isLoading = false }) {
   if (messages.length === 0) {
@@ -44,19 +38,27 @@ export default function MessageList({ messages = [], isLoading = false }) {
                   ? 'bg-red-900 text-red-200 border border-red-700'
                   : 'bg-card text-card-foreground border border-border'
             }`}>
-              <div className='text-sm md:text-sm whitespace-pre-wrap break-words'>
+              <div className='text-sm md:text-sm break-words'>
                 {message.isStreaming && !message.content ? (
                   // Show "Thinking..." when streaming just started (no content yet)
                   <div className='flex items-center gap-2 text-muted-foreground'>
                     <Loader2 className='h-4 w-4 animate-spin' />
                     <span>Thinking...</span>
                   </div>
-                ) : (
-                  // Show content with optional streaming cursor
-                  <>
+                ) : message.role === 'ai' ? (
+                  // Render markdown for AI responses using Streamdown (optimized for streaming)
+                  <Streamdown
+                    isAnimating={message.isStreaming}
+                    caret={message.isStreaming ? 'block' : undefined}
+                    controls={{
+                      table: true,  // Copy/download buttons for tables
+                    }}
+                  >
                     {message.content}
-                    {message.isStreaming && <StreamingCursor />}
-                  </>
+                  </Streamdown>
+                ) : (
+                  // Plain text for user messages
+                  <span className='whitespace-pre-wrap'>{message.content}</span>
                 )}
               </div>
 
