@@ -26,10 +26,13 @@ export default function MessageList({ messages = [], isLoading = false }) {
     )
   }
 
+  // Find if there's a streaming message (for caret display)
+  const lastMessageIndex = messages.length - 1
+
   return (
     <div className='bg-background min-h-full'>
       <div className='p-3 md:p-4 space-y-4 md:space-y-6 max-w-4xl mx-auto min-h-full'>
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] md:max-w-[70%] p-3 md:p-4 rounded-lg ${
               message.role === 'user'
@@ -53,7 +56,14 @@ export default function MessageList({ messages = [], isLoading = false }) {
                     mode={message.isStreaming ? 'streaming' : 'static'}
                     isAnimating={message.isStreaming}
                     parseIncompleteMarkdown={true}
-                    caret={message.isStreaming ? 'block' : undefined}
+                    caret={
+                      // Only show caret on the last AI message that is streaming
+                      message.role === 'ai' &&
+                      message.isStreaming &&
+                      index === lastMessageIndex
+                        ? 'block'
+                        : undefined
+                    }
                     controls={{
                       table: true,  // Copy/download buttons for tables
                     }}

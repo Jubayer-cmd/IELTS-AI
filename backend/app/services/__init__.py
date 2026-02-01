@@ -2,6 +2,6 @@
 Services package for IELTS Writing AI.
 """
 
-from .langgraph import ielts_agent, process_message
+from .langgraph import process_message, stream_message_async
 
-__all__ = ["ielts_agent", "process_message"]
+__all__ = ["process_message", "stream_message_async"]

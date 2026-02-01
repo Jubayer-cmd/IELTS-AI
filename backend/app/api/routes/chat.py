@@ -20,7 +20,11 @@ from app.models.chat import (
     ThreadCreate,
     ThreadPublic,
 )
-from app.services.langgraph import process_message, stream_message_async
+from app.services.langgraph import (
+    generate_thread_title,
+    process_message,
+    stream_message_async,
+)
 
 router = APIRouter()
 
@@ -151,10 +155,11 @@ def send_message(
         content=message_in.content,
     )
 
-    # Process through LangGraph agent
+    # Process through LangGraph agent (with user_id for long-term memory)
     ai_response_content = process_message(
         user_message=message_in.content,
         thread_id=thread_id,
+        user_id=current_user.id,
     )
 
     # Save AI response
@@ -204,6 +209,12 @@ async def stream_message_endpoint(
             status_code=403, detail="Not authorized to post to this thread"
         )
 
+    # Check if this is the first message (for auto-title generation)
+    existing_message_count = crud.get_thread_message_count(
+        session=session, thread_id=thread_id
+    )
+    is_first_message = existing_message_count == 0
+
     # Save user message immediately (before streaming starts)
     crud.create_message(
         session=session,
@@ -214,20 +225,24 @@ async def stream_message_endpoint(
 
     # Store values for use in the async generator
     user_content = message_in.content
+    user_id = current_user.id
 
     async def generate_sse() -> AsyncGenerator[str, None]:
         """Async generator that yields SSE-formatted events."""
         accumulated_content = ""
 
         try:
-            # Stream tokens from LangGraph using async streaming
+            # Stream tokens from LangGraph using async streaming (with user_id for long-term memory)
             async for token in stream_message_async(
                 user_message=user_content,
                 thread_id=thread_id,
+                user_id=user_id,
             ):
                 accumulated_content += token
                 # SSE format: "data: <content>\n\n"
-                yield f"data: {token}\n\n"
+                # Escape newlines since SSE doesn't support multiline data fields
+                token_escaped = token.replace("\\", "\\\\").replace("\n", "\\n")
+                yield f"data: {token_escaped}\n\n"
 
             # After streaming completes, save AI message to database
             with Session(engine) as db_session:
@@ -247,17 +262,37 @@ async def stream_message_endpoint(
                         session=db_session, thread=thread_to_update
                     )
 
-                # Send completion metadata
+                # Generate title for first message (ChatGPT/Claude style)
+                new_title = None
+                if is_first_message and thread_to_update:
+                    try:
+                        new_title = generate_thread_title(user_content)
+                        crud.update_thread_title(
+                            session=db_session,
+                            thread=thread_to_update,
+                            title=new_title,
+                        )
+                    except Exception as e:
+                        print(f"Failed to generate title: {e}")
+                        # Don't fail the whole request if title generation fails
+
+                # Send completion metadata (include new title if generated)
                 complete_data = {
                     "type": "complete",
                     "id": ai_message.id,
                     "created_at": ai_message.created_at.isoformat(),
                 }
+                if new_title:
+                    complete_data["title"] = new_title
+
                 yield f"data: {json.dumps(complete_data)}\n\n"
 
         except Exception as e:
-            # Send error event
-            error_data = {"type": "error", "message": str(e)}
+            # Send error event with full traceback for debugging
+            import traceback
+            error_msg = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
+            print(f"Streaming error: {error_msg}")  # Log to console
+            error_data = {"type": "error", "message": str(e) or type(e).__name__}
             yield f"data: {json.dumps(error_data)}\n\n"
 
         # Signal stream end

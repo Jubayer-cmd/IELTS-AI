@@ -5,21 +5,32 @@ This module defines the conversational AI agent with two modes:
 - Chat: General English tutoring conversations
 - Essay: IELTS essay evaluation with scoring and feedback
 
-The agent uses a router to classify user intent and direct to the appropriate node.
+Memory Architecture:
+- Short-term: PostgresSaver checkpointer (thread-scoped conversation history)
+- Long-term: PostgresStore (cross-session user profiles and preferences)
+
+See: https://docs.langchain.com/oss/python/langgraph/memory
 """
 
 from typing import Annotated
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.store.base import BaseStore
 from pydantic import SecretStr
 from typing_extensions import TypedDict
 
 from app.core.config import settings
+from app.core.memory import (
+    get_async_checkpointer,
+    get_async_memory_store,
+    get_checkpointer,
+    get_memory_store,
+)
 
 # ═══════════════════════════════════════════════════════════════
 # STATE DEFINITION
@@ -42,11 +53,9 @@ class AgentState(TypedDict):
 model = ChatOpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=SecretStr(settings.OPENROUTER_API_KEY),
-    model="upstage/solar-pro-3:free",
+    model="tngtech/tng-r1t-chimera:free",
     streaming=True,
 )
-
-checkpoint = MemorySaver()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -71,26 +80,75 @@ model_with_tools = model.bind_tools(tools)
 
 
 # ═══════════════════════════════════════════════════════════════
+# LONG-TERM MEMORY HELPERS
+# ═══════════════════════════════════════════════════════════════
+
+
+def get_user_context(store: BaseStore, user_id: str) -> str:
+    """
+    Retrieve user's long-term memory context.
+
+    Fetches user profile and preferences from the memory store
+    to personalize the agent's responses.
+    """
+    if not user_id:
+        return ""
+
+    context_parts = []
+
+    # Get user profile
+    namespace = (user_id, "profile")
+    try:
+        items = list(store.search(namespace))
+        for item in items:
+            if "data" in item.value:
+                context_parts.append(f"User info: {item.value['data']}")
+    except Exception:
+        pass  # Store might not be initialized yet
+
+    # Get recent notes about user
+    namespace = (user_id, "notes")
+    try:
+        items = list(store.search(namespace, limit=3))
+        for item in items:
+            if "data" in item.value:
+                context_parts.append(f"Previous observation: {item.value['data']}")
+    except Exception:
+        pass
+
+    return "\n".join(context_parts)
+
+
+# ═══════════════════════════════════════════════════════════════
 # NODE FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
 
 
-def chat_node(state: AgentState) -> dict:
+def chat_node(state: AgentState, config: RunnableConfig, *, store: BaseStore) -> dict:
     """
     General English tutoring chat node.
 
     Handles casual conversation about English learning, grammar,
     vocabulary, and language tips.
+
+    Uses long-term memory to personalize responses.
     """
+    # Get user context from long-term memory
+    user_id = config.get("configurable", {}).get("user_id", "")
+    user_context = get_user_context(store, user_id)
+
+    system_content = (
+        "You are a friendly English tutor named Engla. "
+        "Help users with basic English questions, grammar, vocabulary, "
+        "and language learning tips. Keep responses focused on English learning. "
+        "If users ask unrelated questions, politely redirect to English topics."
+    )
+
+    if user_context:
+        system_content += f"\n\nUser Context:\n{user_context}"
+
     messages = [
-        SystemMessage(
-            content=(
-                "You are a friendly English tutor named Engla. "
-                "Help users with basic English questions, grammar, vocabulary, "
-                "and language learning tips. Keep responses focused on English learning. "
-                "If users ask unrelated questions, politely redirect to English topics."
-            )
-        ),
+        SystemMessage(content=system_content),
         *state["message"],
     ]
 
@@ -98,7 +156,7 @@ def chat_node(state: AgentState) -> dict:
     return {"message": [AIMessage(content=response.content)]}
 
 
-def essay_node(state: AgentState) -> dict:
+def essay_node(state: AgentState, config: RunnableConfig, *, store: BaseStore) -> dict:
     """
     IELTS essay evaluation node.
 
@@ -106,10 +164,14 @@ def essay_node(state: AgentState) -> dict:
     - Overall band score (1-9)
     - Individual criterion scores
     - Detailed feedback with improvements
+
+    Uses long-term memory for personalized feedback.
     """
-    messages = [
-        SystemMessage(
-            content="""You are an expert IELTS examiner. Evaluate essays and provide:
+    # Get user context from long-term memory
+    user_id = config.get("configurable", {}).get("user_id", "")
+    user_context = get_user_context(store, user_id)
+
+    system_content = """You are an expert IELTS examiner. Evaluate essays and provide:
 1. Overall Band Score (1-9)
 2. Task Achievement score
 3. Coherence & Cohesion score
@@ -119,7 +181,12 @@ def essay_node(state: AgentState) -> dict:
 
 Use the count_words tool to check word count.
 Use the count_words_limit tool to verify if essay meets the minimum 250 word requirement."""
-        ),
+
+    if user_context:
+        system_content += f"\n\nUser Context (tailor feedback based on this):\n{user_context}"
+
+    messages = [
+        SystemMessage(content=system_content),
         *state["message"],
     ]
 
@@ -193,17 +260,79 @@ def router(state: AgentState) -> str:
 # GRAPH CONSTRUCTION
 # ═══════════════════════════════════════════════════════════════
 
-builder = StateGraph(AgentState)
 
-# Add nodes
-builder.add_node("chat", chat_node)
-builder.add_node("essay", essay_node)
+def _build_graph_base():
+    """Build the base graph structure (without memory components)."""
+    builder = StateGraph(AgentState)
 
-# Add edges - router is a conditional edge function, not a node
-# This means it won't appear in langgraph_node metadata
-builder.add_conditional_edges(START, router)
-builder.add_edge("chat", END)
-builder.add_edge("essay", END)
+    # Add nodes
+    builder.add_node("chat", chat_node)
+    builder.add_node("essay", essay_node)
 
-# Compile with checkpointer for conversation memory
-graph = builder.compile(checkpointer=checkpoint)
+    # Add edges - router is a conditional edge function, not a node
+    builder.add_conditional_edges(START, router)
+    builder.add_edge("chat", END)
+    builder.add_edge("essay", END)
+
+    return builder
+
+
+def build_graph():
+    """
+    Build and compile the sync agent graph with memory.
+
+    Returns a compiled graph with:
+    - PostgresSaver checkpointer (short-term memory)
+    - PostgresStore (long-term memory)
+
+    Use this for synchronous operations like graph.invoke().
+    """
+    builder = _build_graph_base()
+
+    # Get sync memory components
+    checkpointer = get_checkpointer()
+    store = get_memory_store()
+
+    # Compile with both checkpointer (short-term) and store (long-term)
+    return builder.compile(checkpointer=checkpointer, store=store)
+
+
+def build_async_graph():
+    """
+    Build and compile the async agent graph with memory.
+
+    Returns a compiled graph with:
+    - AsyncPostgresSaver checkpointer (async short-term memory)
+    - AsyncPostgresStore (async long-term memory)
+
+    Use this for async operations like astream_events().
+    """
+    builder = _build_graph_base()
+
+    # Get async memory components
+    checkpointer = get_async_checkpointer()
+    store = get_async_memory_store()
+
+    # Compile with async checkpointer and store
+    return builder.compile(checkpointer=checkpointer, store=store)
+
+
+# Lazy initialization of graphs (to avoid import-time database connection)
+_graph = None
+_async_graph = None
+
+
+def get_graph():
+    """Get the compiled sync graph (lazy initialization)."""
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph
+
+
+def get_async_graph():
+    """Get the compiled async graph (lazy initialization)."""
+    global _async_graph
+    if _async_graph is None:
+        _async_graph = build_async_graph()
+    return _async_graph

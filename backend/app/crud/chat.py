@@ -57,6 +57,22 @@ def update_thread_timestamp(*, session: Session, thread: Thread) -> None:
     session.commit()
 
 
+def update_thread_title(*, session: Session, thread: Thread, title: str) -> Thread:
+    """Update thread's title (for auto-title generation)."""
+    thread.title = title
+    thread.updated_at = datetime.now(timezone.utc)
+    session.add(thread)
+    session.commit()
+    session.refresh(thread)
+    return thread
+
+
+def get_thread_message_count(*, session: Session, thread_id: int) -> int:
+    """Get the count of messages in a thread (to check if first message)."""
+    statement = select(ChatMessage).where(ChatMessage.thread_id == thread_id)
+    return len(list(session.exec(statement).all()))
+
+
 # ═══════════════════════════════════════════════════════════════
 # MESSAGE CRUD
 # ═══════════════════════════════════════════════════════════════
